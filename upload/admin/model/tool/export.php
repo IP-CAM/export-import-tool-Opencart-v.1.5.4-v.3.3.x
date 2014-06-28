@@ -93,21 +93,6 @@ class ModelToolExport extends Model {
 	}
 
 
-	protected function getDefaultLanguageId( ) {
-		$code = $this->config->get('config_language');
-		$sql = "SELECT language_id FROM `".DB_PREFIX."language` WHERE code = '$code'";
-		$result = $this->db->query( $sql );
-		$languageId = 1;
-		if ($result->rows) {
-			foreach ($result->rows as $row) {
-				$languageId = $row['language_id'];
-				break;
-			}
-		}
-		return $languageId;
-	}
-
-
 	protected function getDefaultWeightUnit() {
 		$weightUnit = $this->config->get( 'config_weight_class' );
 		return $weightUnit;
@@ -190,7 +175,7 @@ class ModelToolExport extends Model {
 
 	function getWeightClassIds( ) {
 		// find the default language id
-		$languageId = $this->getDefaultLanguageId();
+		$languageId = $this->config->get('config_language_id');
 		
 		// find all weight classes already stored in the database
 		$weightClassIds = array();
@@ -212,7 +197,7 @@ class ModelToolExport extends Model {
 
 	function getLengthClassIds( ) {
 		// find the default language id
-		$languageId = $this->getDefaultLanguageId();
+		$languageId = $this->config->get('config_language_id');
 		
 		// find all length classes already stored in the database
 		$lengthClassIds = array();
@@ -258,7 +243,7 @@ class ModelToolExport extends Model {
 	function storeProductsIntoDatabase( &$products )
 	{
 		// find the default language id
-		$languageId = $this->getDefaultLanguageId();
+		$languageId = $this->config->get('config_language_id');
 		
 		// start transaction, remove products
 		$sql = "START TRANSACTION;\n";
@@ -432,7 +417,7 @@ class ModelToolExport extends Model {
 
 	function uploadProducts( &$reader ) {
 		// find the default language id and default units
-		$languageId = $this->getDefaultLanguageId();
+		$languageId = $this->config->get('config_language_id');
 		$defaultWeightUnit = $this->getDefaultWeightUnit();
 		$defaultMeasurementUnit = $this->getDefaultMeasurementUnit();
 		$defaultStockStatusId = $this->config->get('config_stock_status_id');
@@ -571,7 +556,7 @@ class ModelToolExport extends Model {
 	function storeCategoriesIntoDatabase( &$categories )
 	{
 		// find the default language id
-		$languageId = $this->getDefaultLanguageId();
+		$languageId = $this->config->get('config_language_id');
 
 		// start transaction, remove categories
 		$sql = "START TRANSACTION;\n";
@@ -673,7 +658,7 @@ class ModelToolExport extends Model {
 	function uploadCategories( &$reader )
 	{
 		// find the default language id
-		$languageId = $this->getDefaultLanguageId();
+		$languageId = $this->config->get('config_language_id');
 		
 		$data = $reader->getSheet(0);
 		$categories = array();
@@ -749,7 +734,7 @@ class ModelToolExport extends Model {
 	function storeOptionsIntoDatabase( &$options )
 	{
 		// find the default language id
-		$languageId = $this->getDefaultLanguageId();
+		$languageId = $this->config->get('config_language_id');
 		
 		// reuse old options and old option_values where possible
 		$optionIds = array();       // indexed by [name][type]
@@ -916,7 +901,7 @@ class ModelToolExport extends Model {
 	function uploadOptions( &$reader )
 	{
 		// find the default language id
-		$languageId = $this->getDefaultLanguageId();
+		$languageId = $this->config->get('config_language_id');
 		
 		$data = $reader->getSheet(3);
 		$options = array();
@@ -978,7 +963,7 @@ class ModelToolExport extends Model {
 
 	function storeAttributesIntoDatabase( &$attributes ) {
 		// find the default language id
-		$languageId = $this->getDefaultLanguageId();
+		$languageId = $this->config->get('config_language_id');
 		
 		// reuse old attribute_groups and attributes where possible
 		$attributeGroupIds = array();    // indexed by [group]
@@ -1089,7 +1074,7 @@ class ModelToolExport extends Model {
 	function uploadAttributes( &$reader )
 	{
 		// find the default language id
-		$languageId = $this->getDefaultLanguageId();
+		$languageId = $this->config->get('config_language_id');
 		
 		$data = $reader->getSheet(4);
 		$attributes = array();
@@ -1138,7 +1123,7 @@ class ModelToolExport extends Model {
 		$this->multiquery( $sql );
 
 		// find the default language id
-		$languageId = $this->getDefaultLanguageId();
+		$languageId = $this->config->get('config_language_id');
 
 		// find existing customer groups from the database
 		$sql = "SELECT `customer_group_id`, `name` FROM `".DB_PREFIX."customer_group_description` WHERE language_id=$languageId";
@@ -1250,7 +1235,7 @@ class ModelToolExport extends Model {
 		$this->multiquery( $sql );
 
 		// find the default language id
-		$languageId = $this->getDefaultLanguageId();
+		$languageId = $this->config->get('config_language_id');
 
 		// find existing customer groups from the database
 		$sql = "SELECT `customer_group_id`, `name` FROM `".DB_PREFIX."customer_group_description` WHERE language_id=$languageId";
@@ -1365,7 +1350,7 @@ class ModelToolExport extends Model {
 		$this->multiquery( $sql );
 
 		// find the default language id
-		$languageId = $this->getDefaultLanguageId();
+		$languageId = $this->config->get('config_language_id');
 
 		// find existing customer groups from the database
 		$sql = "SELECT `customer_group_id`, `name` FROM `".DB_PREFIX."customer_group_description` WHERE language_id=$languageId";
@@ -2576,7 +2561,7 @@ class ModelToolExport extends Model {
 			// set appropriate timeout limit
 			set_time_limit( 1800 );
 
-			$languageId = $this->getDefaultLanguageId();
+			$languageId = $this->config->get('config_language_id');
 
 			// create a new workbook
 			$workbook = new PHPExcel();
