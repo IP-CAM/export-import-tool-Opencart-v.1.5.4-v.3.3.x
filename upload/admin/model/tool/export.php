@@ -94,7 +94,7 @@ class ModelToolExport extends Model {
 
 
 	protected function getDefaultWeightUnit() {
-		$weightUnit = $this->config->get( 'config_weight_class' );
+		$weightUnit = $this->weight->getUnit( $this->config->get( 'config_weight_class_id' ) );
 		return $weightUnit;
 	}
 
