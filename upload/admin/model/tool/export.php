@@ -100,7 +100,7 @@ class ModelToolExport extends Model {
 
 
 	protected function getDefaultMeasurementUnit() {
-		$measurementUnit = $this->config->get( 'config_length_class' );
+		$measurementUnit = $this->length->getUnit( $this->config->get( 'config_length_class_id' ) );
 		return $measurementUnit;
 	}
 
