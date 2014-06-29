@@ -106,7 +106,7 @@ class ModelToolExport extends Model {
 
 
 
-	function storeManufacturersIntoDatabase( &$products, &$manufacturerIds ) {
+	public function storeManufacturersIntoDatabase( &$products, &$manufacturerIds ) {
 		// find all manufacturers already stored in the database
 		$sql = "SELECT `manufacturer_id`, `name` FROM `".DB_PREFIX."manufacturer`;";
 		$result = $this->db->query( $sql );
@@ -173,7 +173,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function getWeightClassIds( ) {
+	public function getWeightClassIds( ) {
 		// find the default language id
 		$languageId = $this->config->get('config_language_id');
 
@@ -195,7 +195,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function getLengthClassIds( ) {
+	public function getLengthClassIds( ) {
 		// find the default language id
 		$languageId = $this->config->get('config_language_id');
 
@@ -217,7 +217,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function getLayoutIds( ) {
+	public function getLayoutIds( ) {
 		$result = $this->db->query( "SELECT * FROM `".DB_PREFIX."layout`" );
 		$layoutIds = array();
 		foreach ($result->rows as $row) {
@@ -240,7 +240,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function storeProductsIntoDatabase( &$products )
+	public function storeProductsIntoDatabase( &$products )
 	{
 		// find the default language id
 		$languageId = $this->config->get('config_language_id');
@@ -415,7 +415,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function uploadProducts( &$reader ) {
+	public function uploadProducts( &$reader ) {
 		// find the default language id and default units
 		$languageId = $this->config->get('config_language_id');
 		$defaultWeightUnit = $this->getDefaultWeightUnit();
@@ -553,8 +553,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function storeCategoriesIntoDatabase( &$categories )
-	{
+	public function storeCategoriesIntoDatabase( &$categories )	{
 		// find the default language id
 		$languageId = $this->config->get('config_language_id');
 
@@ -655,8 +654,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function uploadCategories( &$reader )
-	{
+	public function uploadCategories( &$reader ) {
 		// find the default language id
 		$languageId = $this->config->get('config_language_id');
 
@@ -731,8 +729,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function storeOptionsIntoDatabase( &$options )
-	{
+	public function storeOptionsIntoDatabase( &$options ) {
 		// find the default language id
 		$languageId = $this->config->get('config_language_id');
 
@@ -898,8 +895,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function uploadOptions( &$reader )
-	{
+	public function uploadOptions( &$reader ) {
 		// find the default language id
 		$languageId = $this->config->get('config_language_id');
 
@@ -961,7 +957,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function storeAttributesIntoDatabase( &$attributes ) {
+	public function storeAttributesIntoDatabase( &$attributes ) {
 		// find the default language id
 		$languageId = $this->config->get('config_language_id');
 
@@ -1071,8 +1067,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function uploadAttributes( &$reader )
-	{
+	public function uploadAttributes( &$reader ) {
 		// find the default language id
 		$languageId = $this->config->get('config_language_id');
 
@@ -1116,8 +1111,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function storeSpecialsIntoDatabase( &$specials )
-	{
+	public function storeSpecialsIntoDatabase( &$specials ) {
 		$sql = "START TRANSACTION;\n";
 		$sql .= "DELETE FROM `".DB_PREFIX."product_special`;\n";
 		$this->multiquery( $sql );
@@ -1190,8 +1184,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function uploadSpecials( &$reader )
-	{
+	public function uploadSpecials( &$reader ) {
 		$data = $reader->getSheetByName('Specials');
 		$specials = array();
 		$i = 0;
@@ -1228,8 +1221,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function storeDiscountsIntoDatabase( &$discounts )
-	{
+	public function storeDiscountsIntoDatabase( &$discounts ) {
 		$sql = "START TRANSACTION;\n";
 		$sql .= "DELETE FROM `".DB_PREFIX."product_discount`;\n";
 		$this->multiquery( $sql );
@@ -1303,8 +1295,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function uploadDiscounts( &$reader )
-	{
+	public function uploadDiscounts( &$reader ) {
 		$data = $reader->getSheetByName('Discounts');
 		$discounts = array();
 		$i = 0;
@@ -1343,8 +1334,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function storeRewardsIntoDatabase( &$rewards )
-	{
+	public function storeRewardsIntoDatabase( &$rewards ) {
 		$sql = "START TRANSACTION;\n";
 		$sql .= "DELETE FROM `".DB_PREFIX."product_reward`;\n";
 		$this->multiquery( $sql );
@@ -1414,8 +1404,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function uploadRewards( &$reader )
-	{
+	public function uploadRewards( &$reader ) {
 		$data = $reader->getSheetByName('Rewards');
 		$rewards = array();
 		$i = 0;
@@ -1446,8 +1435,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function storeAdditionalImagesIntoDatabase( &$images )
-	{
+	public function storeAdditionalImagesIntoDatabase( &$images ) {
 		// start transaction
 		$sql = "START TRANSACTION;\n";
 
@@ -1484,8 +1472,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function uploadAdditionalImages( &$reader )
-	{
+	public function uploadAdditionalImages( &$reader ) {
 		$data = $reader->getSheetByName('AdditionalImages');
 		$images = array();
 		$i = 0;
@@ -1513,14 +1500,14 @@ class ModelToolExport extends Model {
 	}
 
 
-	function getCell(&$worksheet,$row,$col,$default_val='') {
+	public function getCell(&$worksheet,$row,$col,$default_val='') {
 		$col -= 1; // we use 1-based, PHPExcel uses 0-based column index
 		$row += 1; // we use 0-based, PHPExcel used 1-based row index
 		return ($worksheet->cellExistsByColumnAndRow($col,$row)) ? $worksheet->getCellByColumnAndRow($col,$row)->getValue() : $default_val;
 	}
 
 
-	function validateHeading( &$data, &$expected ) {
+	public function validateHeading( &$data, &$expected ) {
 		$heading = array();
 		$k = PHPExcel_Cell::columnIndexFromString( $data->getHighestColumn() );
 		if ($k != count($expected)) {
@@ -1550,8 +1537,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function validateCategories( $reader )
-	{
+	public function validateCategories( $reader ) {
 		$expectedCategoriesHeading = $this->expectedCategoriesHeading();
 		$data = $reader->getSheetByName('Categories');
 		return $this->validateHeading( $data, $expectedCategoriesHeading );
@@ -1563,8 +1549,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function validateProducts( $reader )
-	{
+	public function validateProducts( $reader ) {
 		$expectedProductsHeading = $this->expectedProductsHeading();
 		$data = $reader->getSheetByName('Products');
 		return $this->validateHeading( $data, $expectedProductsHeading );
@@ -1576,8 +1561,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function validateAdditionalImages( $reader )
-	{
+	public function validateAdditionalImages( $reader ) {
 		$expectedAdditionalImagesHeading = $this->expectedAdditionalImagesHeading();
 		$data = $reader->getSheetByName('AdditionalImages');
 		return $this->validateHeading( $data, $expectedAdditionalImagesHeading );
@@ -1589,8 +1573,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function validateOptions( &$reader )
-	{
+	public function validateOptions( &$reader ) {
 		$expectedOptionsHeading = $this->expectedOptionsHeading();
 		$data = $reader->getSheet(0);
 		return $this->validateHeading( $data, $expectedOptionsHeading );
@@ -1602,8 +1585,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function validateAttributes( $reader )
-	{
+	public function validateAttributes( $reader ) {
 		$expectedAttributesHeading = $this->expectedAttributesHeading();
 		$data = $reader->getSheetByName('Attributes');
 		return $this->validateHeading( $data, $expectedAttributesHeading );
@@ -1615,8 +1597,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function validateSpecials( $reader )
-	{
+	public function validateSpecials( $reader ) {
 		$expectedSpecialsHeading = $this->expectedSpecialsHeading();
 		$data = $reader->getSheetByName('Specials');
 		return $this->validateHeading( $data, $expectedSpecialsHeading );
@@ -1628,8 +1609,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function validateDiscounts( $reader )
-	{
+	public function validateDiscounts( $reader ) {
 		$expectedDiscountsHeading = $this->expectedDiscountsHeading();
 		$data = $reader->getSheetByName('Discounts');
 		return $this->validateHeading( $data, $expectedDiscountsHeading );
@@ -1641,8 +1621,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function validateRewards( $reader )
-	{
+	public function validateRewards( $reader ) {
 		$expectedRewardsHeading = $this->expectedRewardsHeading();
 		$data = $reader->getSheetByName('Rewards');
 		return $this->validateHeading( $data, $expectedRewardsHeading );
@@ -1654,8 +1633,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function validateUpload( $reader )
-	{
+	public function validateUpload( $reader ) {
 		$expectedWorksheets = $this->expectedWorksheets();
 		$sheetNames = $reader->getSheetNames();
 		foreach ($expectedWorksheets as $key=>$expectedWorksheet) {
@@ -1696,12 +1674,12 @@ class ModelToolExport extends Model {
 	}
 
 
-	function clearCache() {
+	public function clearCache() {
 		$this->cache->delete('*');
 	}
 
 
-	function upload( $filename ) {
+	public function upload( $filename ) {
 		// we use our own error handler
 		global $registry;
 		$registry = $this->registry;
@@ -1833,7 +1811,7 @@ class ModelToolExport extends Model {
 		return $reader;
 	}
 
-	function getStoreIdsForCategories( ) {
+	public function getStoreIdsForCategories( ) {
 		$sql =  "SELECT category_id, store_id FROM `".DB_PREFIX."category_to_store` cs;";
 		$storeIds = array();
 		$result = $this->db->query( $sql );
@@ -1851,7 +1829,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function getLayoutsForCategories( ) {
+	public function getLayoutsForCategories( ) {
 		$sql  = "SELECT cl.*, l.name FROM `".DB_PREFIX."category_to_layout` cl ";
 		$sql .= "LEFT JOIN `".DB_PREFIX."layout` l ON cl.layout_id = l.layout_id ";
 		$sql .= "ORDER BY cl.category_id, cl.store_id;";
@@ -2082,8 +2060,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function populateProductsWorksheet( &$worksheet, $languageId, &$priceFormat, &$boxFormat, &$weightFormat, &$textFormat )
-	{
+	public function populateProductsWorksheet( &$worksheet, $languageId, &$priceFormat, &$boxFormat, &$weightFormat, &$textFormat ) {
 		// Set the column widths
 		$j = 0;
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('product_id'),4)+1);
@@ -2254,8 +2231,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	protected function populateAdditionalImagesWorksheet( &$worksheet, &$boxFormat )
-	{
+	protected function populateAdditionalImagesWorksheet( &$worksheet, &$boxFormat ) {
 		// Set the column widths
 		$j = 0;
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('product_id'),4)+1);
@@ -2316,8 +2292,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	protected function populateOptionsWorksheet( &$worksheet, $languageId, &$priceFormat, &$boxFormat, &$weightFormat, $textFormat )
-	{
+	protected function populateOptionsWorksheet( &$worksheet, $languageId, &$priceFormat, &$boxFormat, &$weightFormat, $textFormat ) {
 		// Set the column widths
 		$j = 0;
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('product_id'),4)+1);
@@ -2405,8 +2380,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	protected function populateAttributesWorksheet( &$worksheet, $languageId, &$boxFormat, $textFormat )
-	{
+	protected function populateAttributesWorksheet( &$worksheet, $languageId, &$boxFormat, $textFormat ) {
 		// Set the column widths
 		$j = 0;
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('product_id'),4)+1);
@@ -2452,8 +2426,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	protected function populateSpecialsWorksheet( &$worksheet, $languageId, &$priceFormat, &$boxFormat, &$textFormat )
-	{
+	protected function populateSpecialsWorksheet( &$worksheet, $languageId, &$priceFormat, &$boxFormat, &$textFormat ) {
 		// Set the column widths
 		$j = 0;
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(strlen('product_id')+1);
@@ -2502,8 +2475,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	protected function populateDiscountsWorksheet( &$worksheet, $languageId, &$priceFormat, &$boxFormat, &$textFormat )
-	{
+	protected function populateDiscountsWorksheet( &$worksheet, $languageId, &$priceFormat, &$boxFormat, &$textFormat ) {
 		// Set the column widths
 		$j = 0;
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(strlen('product_id')+1);
@@ -2555,8 +2527,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	protected function populateRewardsWorksheet( &$worksheet, $languageId, &$boxFormat )
-	{
+	protected function populateRewardsWorksheet( &$worksheet, $languageId, &$boxFormat ) {
 		// Set the column widths
 		$j = 0;
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(strlen('product_id')+1);
@@ -2600,7 +2571,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function download() {
+	public function download() {
 		// we use our own error handler
 		global $registry;
 		$registry = $this->registry;
