@@ -69,7 +69,7 @@ class ModelToolExport extends Model {
 
 	private $error = array();
 
-	function clean( &$str, $allowBlanks=FALSE ) {
+	public function clean( &$str, $allowBlanks=FALSE ) {
 		$result = "";
 		$n = strlen( $str );
 		for ($m=0; $m<$n; $m++) {
@@ -83,7 +83,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function multiquery( $sql ) {
+	public function multiquery( $sql ) {
 		foreach (explode(";\n", $sql) as $sql) {
 			$sql = trim($sql);
 			if ($sql) {
@@ -93,17 +93,79 @@ class ModelToolExport extends Model {
 	}
 
 
-	protected function getDefaultWeightUnit() {
+	// Information Methods
+	public function getDefaultWeightUnit() {
 		$weightUnit = $this->weight->getUnit( $this->config->get( 'config_weight_class_id' ) );
 		return $weightUnit;
 	}
 
-
-	protected function getDefaultMeasurementUnit() {
+	public function getDefaultMeasurementUnit() {
 		$measurementUnit = $this->length->getUnit( $this->config->get( 'config_length_class_id' ) );
 		return $measurementUnit;
 	}
 
+	public function getWeightClassIds( ) {
+		// find the default language id
+		$languageId = $this->config->get('config_language_id');
+
+		// find all weight classes already stored in the database
+		$weightClassIds = array();
+		$sql = "SELECT `weight_class_id`, `unit` FROM `".DB_PREFIX."weight_class_description` WHERE `language_id`=$languageId;";
+		$result = $this->db->query( $sql );
+		if ($result->rows) {
+			foreach ($result->rows as $row) {
+				$weightClassId = $row['weight_class_id'];
+				$unit = $row['unit'];
+				if (!isset($weightClassIds[$unit])) {
+					$weightClassIds[$unit] = $weightClassId;
+				}
+			}
+		}
+
+		return $weightClassIds;
+	}
+
+	public function getLengthClassIds( ) {
+		// find the default language id
+		$languageId = $this->config->get('config_language_id');
+
+		// find all length classes already stored in the database
+		$lengthClassIds = array();
+		$sql = "SELECT `length_class_id`, `unit` FROM `".DB_PREFIX."length_class_description` WHERE `language_id`=$languageId;";
+		$result = $this->db->query( $sql );
+		if ($result->rows) {
+			foreach ($result->rows as $row) {
+				$lengthClassId = $row['length_class_id'];
+				$unit = $row['unit'];
+				if (!isset($lengthClassIds[$unit])) {
+					$lengthClassIds[$unit] = $lengthClassId;
+				}
+			}
+		}
+
+		return $lengthClassIds;
+	}
+
+	public function getLayoutIds( ) {
+		$result = $this->db->query( "SELECT * FROM `".DB_PREFIX."layout`" );
+		$layoutIds = array();
+		foreach ($result->rows as $row) {
+			$layoutIds[$row['name']] = $row['layout_id'];
+		}
+		return $layoutIds;
+	}
+
+	protected function getStoreIds( ) {
+		$sql = "SELECT store_id FROM `".DB_PREFIX."store`;";
+		$result = $this->db->query( $sql );
+		$storeIds = array(0);
+		foreach ($result->rows as $row) {
+			if (!in_array((int)$row['store_id'],$storeIds)) {
+				$storeIds[] = (int)$row['store_id'];
+			}
+		}
+		return $storeIds;
+	}
 
 
 	public function storeManufacturersIntoDatabase( &$products, &$manufacturerIds ) {
@@ -173,73 +235,6 @@ class ModelToolExport extends Model {
 	}
 
 
-	public function getWeightClassIds( ) {
-		// find the default language id
-		$languageId = $this->config->get('config_language_id');
-
-		// find all weight classes already stored in the database
-		$weightClassIds = array();
-		$sql = "SELECT `weight_class_id`, `unit` FROM `".DB_PREFIX."weight_class_description` WHERE `language_id`=$languageId;";
-		$result = $this->db->query( $sql );
-		if ($result->rows) {
-			foreach ($result->rows as $row) {
-				$weightClassId = $row['weight_class_id'];
-				$unit = $row['unit'];
-				if (!isset($weightClassIds[$unit])) {
-					$weightClassIds[$unit] = $weightClassId;
-				}
-			}
-		}
-
-		return $weightClassIds;
-	}
-
-
-	public function getLengthClassIds( ) {
-		// find the default language id
-		$languageId = $this->config->get('config_language_id');
-
-		// find all length classes already stored in the database
-		$lengthClassIds = array();
-		$sql = "SELECT `length_class_id`, `unit` FROM `".DB_PREFIX."length_class_description` WHERE `language_id`=$languageId;";
-		$result = $this->db->query( $sql );
-		if ($result->rows) {
-			foreach ($result->rows as $row) {
-				$lengthClassId = $row['length_class_id'];
-				$unit = $row['unit'];
-				if (!isset($lengthClassIds[$unit])) {
-					$lengthClassIds[$unit] = $lengthClassId;
-				}
-			}
-		}
-
-		return $lengthClassIds;
-	}
-
-
-	public function getLayoutIds( ) {
-		$result = $this->db->query( "SELECT * FROM `".DB_PREFIX."layout`" );
-		$layoutIds = array();
-		foreach ($result->rows as $row) {
-			$layoutIds[$row['name']] = $row['layout_id'];
-		}
-		return $layoutIds;
-	}
-
-
-	protected function getAvailableStoreIds( ) {
-		$sql = "SELECT store_id FROM `".DB_PREFIX."store`;";
-		$result = $this->db->query( $sql );
-		$storeIds = array(0);
-		foreach ($result->rows as $row) {
-			if (!in_array((int)$row['store_id'],$storeIds)) {
-				$storeIds[] = (int)$row['store_id'];
-			}
-		}
-		return $storeIds;
-	}
-
-
 	public function storeProductsIntoDatabase( &$products )
 	{
 		// find the default language id
@@ -261,7 +256,7 @@ class ModelToolExport extends Model {
 		$layoutIds = $this->getLayoutIds( );
 
 		// get pre-defined store_ids
-		$availableStoreIds = $this->getAvailableStoreIds( );
+		$availableStoreIds = $this->getStoreIds( );
 
 		// store or update manufacturers
 		$manufacturerIds = array();
@@ -571,7 +566,7 @@ class ModelToolExport extends Model {
 		$layoutIds = $this->getLayoutIds();
 
 		// get pre-defined store_ids
-		$availableStoreIds = $this->getAvailableStoreIds();
+		$availableStoreIds = $this->getStoreIds();
 
 		// generate and execute SQL for inserting the categories
 		foreach ($categories as $category) {
