@@ -5,7 +5,7 @@ static $registry = NULL;
 // Error Handler
 function error_handler_for_export($errno, $errstr, $errfile, $errline) {
 	global $registry;
-	
+
 	switch ($errno) {
 		case E_NOTICE:
 		case E_USER_NOTICE:
@@ -23,13 +23,13 @@ function error_handler_for_export($errno, $errstr, $errfile, $errline) {
 			$errors = "Unknown";
 			break;
 	}
-	
+
 	$config = $registry->get('config');
 	$url = $registry->get('url');
 	$request = $registry->get('request');
 	$session = $registry->get('session');
 	$log = $registry->get('log');
-	
+
 	if ($config->get('config_error_log')) {
 		$log->write('PHP ' . $errors . ':  ' . $errstr . ' in ' . $errfile . ' on line ' . $errline);
 	}
@@ -127,7 +127,7 @@ class ModelToolExport extends Model {
 		foreach ($manufacturerIds as $manufacturerId) {
 			$maxManufacturerId = max( $maxManufacturerId, $manufacturerId );
 		}
-		$sql = "INSERT INTO `".DB_PREFIX."manufacturer` (`manufacturer_id`, `name`, `image`, `sort_order`) VALUES "; 
+		$sql = "INSERT INTO `".DB_PREFIX."manufacturer` (`manufacturer_id`, `name`, `image`, `sort_order`) VALUES ";
 		$k = strlen( $sql );
 		$first = TRUE;
 		foreach ($products as $product) {
@@ -148,7 +148,7 @@ class ModelToolExport extends Model {
 		if (strlen( $sql ) > $k+2) {
 			$this->db->query( $sql );
 		}
-		
+
 		// populate manufacturer_to_store table
 		$storeIdsForManufacturers = array();
 		foreach ($products as $product) {
@@ -176,7 +176,7 @@ class ModelToolExport extends Model {
 	function getWeightClassIds( ) {
 		// find the default language id
 		$languageId = $this->config->get('config_language_id');
-		
+
 		// find all weight classes already stored in the database
 		$weightClassIds = array();
 		$sql = "SELECT `weight_class_id`, `unit` FROM `".DB_PREFIX."weight_class_description` WHERE `language_id`=$languageId;";
@@ -198,7 +198,7 @@ class ModelToolExport extends Model {
 	function getLengthClassIds( ) {
 		// find the default language id
 		$languageId = $this->config->get('config_language_id');
-		
+
 		// find all length classes already stored in the database
 		$lengthClassIds = array();
 		$sql = "SELECT `length_class_id`, `unit` FROM `".DB_PREFIX."length_class_description` WHERE `language_id`=$languageId;";
@@ -244,7 +244,7 @@ class ModelToolExport extends Model {
 	{
 		// find the default language id
 		$languageId = $this->config->get('config_language_id');
-		
+
 		// start transaction, remove products
 		$sql = "START TRANSACTION;\n";
 		$sql .= "DELETE FROM `".DB_PREFIX."product`;\n";
@@ -256,13 +256,13 @@ class ModelToolExport extends Model {
 		$sql .= "DELETE FROM `".DB_PREFIX."product_related`;\n";
 		$sql .= "DELETE FROM `".DB_PREFIX."product_to_layout`;\n";
 		$this->multiquery( $sql );
-		
+
 		// get pre-defined layouts
 		$layoutIds = $this->getLayoutIds( );
-		
+
 		// get pre-defined store_ids
 		$availableStoreIds = $this->getAvailableStoreIds( );
-		
+
 		// store or update manufacturers
 		$manufacturerIds = array();
 		$ok = $this->storeManufacturersIntoDatabase( $products, $manufacturerIds );
@@ -270,13 +270,13 @@ class ModelToolExport extends Model {
 			$this->db->query( 'ROLLBACK;' );
 			return FALSE;
 		}
-		
+
 		// get weight classes
 		$weightClassIds = $this->getWeightClassIds( );
-		
+
 		// get length classes
 		$lengthClassIds = $this->getLengthClassIds( );
-		
+
 		// generate and execute SQL for storing the products
 		foreach ($products as $product) {
 			$productId = $product['product_id'];
@@ -396,7 +396,7 @@ class ModelToolExport extends Model {
 				$this->db->query($sql);
 			}
 		}
-		
+
 		// final commit
 		$this->db->query("COMMIT;");
 		return TRUE;
@@ -421,8 +421,8 @@ class ModelToolExport extends Model {
 		$defaultWeightUnit = $this->getDefaultWeightUnit();
 		$defaultMeasurementUnit = $this->getDefaultMeasurementUnit();
 		$defaultStockStatusId = $this->config->get('config_stock_status_id');
-		
-		$data = $reader->getSheet(1);
+
+		$data = $reader->getSheetByName('Products');
 		$products = array();
 		$product = array();
 		$isFirstRow = TRUE;
@@ -567,13 +567,13 @@ class ModelToolExport extends Model {
 		$sql .= "DELETE FROM `".DB_PREFIX."category_to_layout`;\n";
 		$sql .= "DELETE FROM `".DB_PREFIX."category_path`;\n";
 		$this->multiquery( $sql );
-		
+
 		// get pre-defined layouts
 		$layoutIds = $this->getLayoutIds();
-		
+
 		// get pre-defined store_ids
 		$availableStoreIds = $this->getAvailableStoreIds();
-		
+
 		// generate and execute SQL for inserting the categories
 		foreach ($categories as $category) {
 			$categoryId = $category['category_id'];
@@ -638,7 +638,7 @@ class ModelToolExport extends Model {
 				$this->db->query($sql7);
 			}
 		}
-		
+
 		// restore category paths for faster lookups on the frontend
 		$this->load->model( 'catalog/category' );
 		$this->model_catalog_category->repairCategories(0);
@@ -659,8 +659,8 @@ class ModelToolExport extends Model {
 	{
 		// find the default language id
 		$languageId = $this->config->get('config_language_id');
-		
-		$data = $reader->getSheet(0);
+
+		$data = $reader->getSheetByName('Categories');
 		$categories = array();
 		$isFirstRow = TRUE;
 		$i = 0;
@@ -735,7 +735,7 @@ class ModelToolExport extends Model {
 	{
 		// find the default language id
 		$languageId = $this->config->get('config_language_id');
-		
+
 		// reuse old options and old option_values where possible
 		$optionIds = array();       // indexed by [name][type]
 		$optionValueIds = array();  // indexed by [name][type][value][image]
@@ -755,7 +755,7 @@ class ModelToolExport extends Model {
 			$optionValueId = $row['option_value_id'];
 			$image = $row['image'];
 			$optionSortOrder = $row['sort_order'];
-			
+
 			if ($maxOptionId < $optionId) {
 				$maxOptionId = $optionId;
 			}
@@ -784,13 +784,13 @@ class ModelToolExport extends Model {
 				$optionValueIds[$name][$type][$value][$image] = $optionValueId;
 			}
 		}
-		
+
 		// start transaction, remove product options and product option values from database
 		$sql = "START TRANSACTION;\n";
 		$sql .= "DELETE FROM `".DB_PREFIX."product_option`;\n";
 		$sql .= "DELETE FROM `".DB_PREFIX."product_option_value`;\n";
 		$this->multiquery( $sql );
-		
+
 		// add product options and product option values to the database
 		$productOptionIds = array(); // indexed by [product_id][option_id]
 		$maxProductOptionId = 0;
@@ -886,7 +886,7 @@ class ModelToolExport extends Model {
 				$this->db->query( $sql );
 			}
 		}
-		
+
 		$this->db->query("COMMIT;");
 		return TRUE;
 	}
@@ -902,8 +902,8 @@ class ModelToolExport extends Model {
 	{
 		// find the default language id
 		$languageId = $this->config->get('config_language_id');
-		
-		$data = $reader->getSheet(3);
+
+		$data = $reader->getSheetByName('Options');
 		$options = array();
 		$i = 0;
 		$k = $data->getHighestRow();
@@ -964,7 +964,7 @@ class ModelToolExport extends Model {
 	function storeAttributesIntoDatabase( &$attributes ) {
 		// find the default language id
 		$languageId = $this->config->get('config_language_id');
-		
+
 		// reuse old attribute_groups and attributes where possible
 		$attributeGroupIds = array();    // indexed by [group]
 		$attributeIds = array();         // indexed by [group][name]
@@ -1009,12 +1009,12 @@ class ModelToolExport extends Model {
 				$attributeIds[$group][$name] = $attributeId;
 			}
 		}
-		
+
 		// start transaction, remove product attributes from database
 		$sql = "START TRANSACTION;\n";
 		$sql .= "DELETE FROM `".DB_PREFIX."product_attribute` WHERE language_id=$languageId;\n";
 		$this->multiquery( $sql );
-		
+
 		// add product attributes to the database
 		foreach ($attributes as $attribute) {
 			$productId = $attribute['product_id'];
@@ -1059,7 +1059,7 @@ class ModelToolExport extends Model {
 			$sql .= "($productId,$attributeId,$langId,'".$this->db->escape( $text )."');";
 			$this->db->query( $sql );
 		}
-		
+
 		$this->db->query("COMMIT;");
 		return TRUE;
 	}
@@ -1075,8 +1075,8 @@ class ModelToolExport extends Model {
 	{
 		// find the default language id
 		$languageId = $this->config->get('config_language_id');
-		
-		$data = $reader->getSheet(4);
+
+		$data = $reader->getSheetByName('Attributes');
 		$attributes = array();
 		$i = 0;
 		$k = $data->getHighestRow();
@@ -1146,7 +1146,7 @@ class ModelToolExport extends Model {
 			$name = $special['customer_group'];
 			if (!isset($customerGroups[$name])) {
 				$maxCustomerGroupId += 1;
-				$sql  = "INSERT INTO `".DB_PREFIX."customer_group` (`customer_group_id`, `approval`, `company_id_display`, `company_id_required`, `tax_id_display`, `tax_id_required`, `sort_order`) VALUES "; 
+				$sql  = "INSERT INTO `".DB_PREFIX."customer_group` (`customer_group_id`, `approval`, `company_id_display`, `company_id_required`, `tax_id_display`, `tax_id_required`, `sort_order`) VALUES ";
 				$sql .= "($maxCustomerGroupId, 0, 1, 0, 0, 1, 1)";
 				$sql .= ";\n";
 				$this->db->query($sql);
@@ -1161,7 +1161,7 @@ class ModelToolExport extends Model {
 		// store product specials into the database
 		$productSpecialId = 0;
 		$first = TRUE;
-		$sql = "INSERT INTO `".DB_PREFIX."product_special` (`product_special_id`,`product_id`,`customer_group_id`,`priority`,`price`,`date_start`,`date_end` ) VALUES "; 
+		$sql = "INSERT INTO `".DB_PREFIX."product_special` (`product_special_id`,`product_id`,`customer_group_id`,`priority`,`price`,`date_start`,`date_end` ) VALUES ";
 		foreach ($specials as $special) {
 			$productSpecialId += 1;
 			$productId = $special['product_id'];
@@ -1192,7 +1192,7 @@ class ModelToolExport extends Model {
 
 	function uploadSpecials( &$reader )
 	{
-		$data = $reader->getSheet(5);
+		$data = $reader->getSheetByName('Specials');
 		$specials = array();
 		$i = 0;
 		$k = $data->getHighestRow();
@@ -1258,7 +1258,7 @@ class ModelToolExport extends Model {
 			$name = $discount['customer_group'];
 			if (!isset($customerGroups[$name])) {
 				$maxCustomerGroupId += 1;
-				$sql  = "INSERT INTO `".DB_PREFIX."customer_group` (`customer_group_id`, `approval`, `company_id_display`, `company_id_required`, `tax_id_display`, `tax_id_required`, `sort_order`) VALUES "; 
+				$sql  = "INSERT INTO `".DB_PREFIX."customer_group` (`customer_group_id`, `approval`, `company_id_display`, `company_id_required`, `tax_id_display`, `tax_id_required`, `sort_order`) VALUES ";
 				$sql .= "($maxCustomerGroupId, 0, 1, 0, 0, 1, 1)";
 				$sql .= ";\n";
 				$this->db->query($sql);
@@ -1273,7 +1273,7 @@ class ModelToolExport extends Model {
 		// store product discounts into the database
 		$productDiscountId = 0;
 		$first = TRUE;
-		$sql = "INSERT INTO `".DB_PREFIX."product_discount` (`product_discount_id`,`product_id`,`customer_group_id`,`quantity`,`priority`,`price`,`date_start`,`date_end` ) VALUES "; 
+		$sql = "INSERT INTO `".DB_PREFIX."product_discount` (`product_discount_id`,`product_id`,`customer_group_id`,`quantity`,`priority`,`price`,`date_start`,`date_end` ) VALUES ";
 		foreach ($discounts as $discount) {
 			$productDiscountId += 1;
 			$productId = $discount['product_id'];
@@ -1305,7 +1305,7 @@ class ModelToolExport extends Model {
 
 	function uploadDiscounts( &$reader )
 	{
-		$data = $reader->getSheet(6);
+		$data = $reader->getSheetByName('Discounts');
 		$discounts = array();
 		$i = 0;
 		$k = $data->getHighestRow();
@@ -1373,7 +1373,7 @@ class ModelToolExport extends Model {
 			$name = $reward['customer_group'];
 			if (!isset($customerGroups[$name])) {
 				$maxCustomerGroupId += 1;
-				$sql  = "INSERT INTO `".DB_PREFIX."customer_group` (`customer_group_id`, `approval`, `company_id_display`, `company_id_required`, `tax_id_display`, `tax_id_required`, `sort_order`) VALUES "; 
+				$sql  = "INSERT INTO `".DB_PREFIX."customer_group` (`customer_group_id`, `approval`, `company_id_display`, `company_id_required`, `tax_id_display`, `tax_id_required`, `sort_order`) VALUES ";
 				$sql .= "($maxCustomerGroupId, 0, 1, 0, 0, 1, 1)";
 				$sql .= ";\n";
 				$this->db->query($sql);
@@ -1388,7 +1388,7 @@ class ModelToolExport extends Model {
 		// store product rewards into the database
 		$productRewardId = 0;
 		$first = TRUE;
-		$sql = "INSERT INTO `".DB_PREFIX."product_reward` (`product_reward_id`,`product_id`,`customer_group_id`,`points` ) VALUES "; 
+		$sql = "INSERT INTO `".DB_PREFIX."product_reward` (`product_reward_id`,`product_id`,`customer_group_id`,`points` ) VALUES ";
 		foreach ($rewards as $reward) {
 			$productRewardId += 1;
 			$productId = $reward['product_id'];
@@ -1416,7 +1416,7 @@ class ModelToolExport extends Model {
 
 	function uploadRewards( &$reader )
 	{
-		$data = $reader->getSheet(7);
+		$data = $reader->getSheetByName('Rewards');
 		$rewards = array();
 		$i = 0;
 		$k = $data->getHighestRow();
@@ -1450,15 +1450,17 @@ class ModelToolExport extends Model {
 	{
 		// start transaction
 		$sql = "START TRANSACTION;\n";
-		
+
 		// delete old additional product images from database
-		$sql = "DELETE FROM `".DB_PREFIX."product_image`";
+		$sql .= "DELETE FROM `".DB_PREFIX."product_image`\n";
 		$this->db->query( $sql );
-		
+
+		$this->db->query("COMMIT;");
+
 		// store additional images into the database
 		$productImageId = 0;
 		$first = TRUE;
-		$sql = "INSERT INTO `".DB_PREFIX."product_image` (`product_image_id`,`product_id`,`image`,`sort_order` ) VALUES "; 
+		$sql = "INSERT INTO `".DB_PREFIX."product_image` (`product_image_id`,`product_id`,`image`,`sort_order` ) VALUES ";
 		foreach ($images as $image) {
 			$productImageId += 1;
 			$productId = $image['product_id'];
@@ -1466,13 +1468,12 @@ class ModelToolExport extends Model {
 			$sortOrder = $image['sort_order'];
 			$sql .= ($first) ? "\n" : ",\n";
 			$first = FALSE;
-			$sql .= "($productImageId,$productId,'".$this->db->escape($imageName)."',$sortOrder)";
+			$sql .= "($productImageId,$productId,'".$this->db->escape($imageName)."',$sortOrder)\n";
 		}
 		if (!$first) {
 			$this->db->query($sql);
 		}
 
-		$this->db->query("COMMIT;");
 		return TRUE;
 	}
 
@@ -1485,7 +1486,7 @@ class ModelToolExport extends Model {
 
 	function uploadAdditionalImages( &$reader )
 	{
-		$data = $reader->getSheet(2);
+		$data = $reader->getSheetByName('AdditionalImages');
 		$images = array();
 		$i = 0;
 		$k = $data->getHighestRow();
@@ -1549,10 +1550,10 @@ class ModelToolExport extends Model {
 	}
 
 
-	function validateCategories( &$reader )
+	function validateCategories( $reader )
 	{
 		$expectedCategoriesHeading = $this->expectedCategoriesHeading();
-		$data =& $reader->getSheet(0);
+		$data = $reader->getSheetByName('Categories');
 		return $this->validateHeading( $data, $expectedCategoriesHeading );
 	}
 
@@ -1562,10 +1563,10 @@ class ModelToolExport extends Model {
 	}
 
 
-	function validateProducts( &$reader )
+	function validateProducts( $reader )
 	{
 		$expectedProductsHeading = $this->expectedProductsHeading();
-		$data =& $reader->getSheet(1);
+		$data = $reader->getSheetByName('Products');
 		return $this->validateHeading( $data, $expectedProductsHeading );
 	}
 
@@ -1575,10 +1576,10 @@ class ModelToolExport extends Model {
 	}
 
 
-	function validateAdditionalImages( &$reader )
+	function validateAdditionalImages( $reader )
 	{
-		$expectedAdditionalImagesHeading = expectedAdditionalImagesHeading();
-		$data =& $reader->getSheet(2);
+		$expectedAdditionalImagesHeading = $this->expectedAdditionalImagesHeading();
+		$data = $reader->getSheetByName('AdditionalImages');
 		return $this->validateHeading( $data, $expectedAdditionalImagesHeading );
 	}
 
@@ -1591,7 +1592,7 @@ class ModelToolExport extends Model {
 	function validateOptions( &$reader )
 	{
 		$expectedOptionsHeading = $this->expectedOptionsHeading();
-		$data =& $reader->getSheet(3);
+		$data = $reader->getSheet(0);
 		return $this->validateHeading( $data, $expectedOptionsHeading );
 	}
 
@@ -1601,10 +1602,10 @@ class ModelToolExport extends Model {
 	}
 
 
-	function validateAttributes( &$reader )
+	function validateAttributes( $reader )
 	{
 		$expectedAttributesHeading = $this->expectedAttributesHeading();
-		$data =& $reader->getSheet(4);
+		$data = $reader->getSheetByName('Attributes');
 		return $this->validateHeading( $data, $expectedAttributesHeading );
 	}
 
@@ -1614,10 +1615,10 @@ class ModelToolExport extends Model {
 	}
 
 
-	function validateSpecials( &$reader )
+	function validateSpecials( $reader )
 	{
 		$expectedSpecialsHeading = $this->expectedSpecialsHeading();
-		$data =& $reader->getSheet(5);
+		$data = $reader->getSheetByName('Specials');
 		return $this->validateHeading( $data, $expectedSpecialsHeading );
 	}
 
@@ -1627,10 +1628,10 @@ class ModelToolExport extends Model {
 	}
 
 
-	function validateDiscounts( &$reader )
+	function validateDiscounts( $reader )
 	{
 		$expectedDiscountsHeading = $this->expectedDiscountsHeading();
-		$data =& $reader->getSheet(6);
+		$data = $reader->getSheetByName('Discounts');
 		return $this->validateHeading( $data, $expectedDiscountsHeading );
 	}
 
@@ -1640,10 +1641,10 @@ class ModelToolExport extends Model {
 	}
 
 
-	function validateRewards( &$reader )
+	function validateRewards( $reader )
 	{
 		$expectedRewardsHeading = $this->expectedRewardsHeading();
-		$data =& $reader->getSheet(7);
+		$data = $reader->getSheetByName('Rewards');
 		return $this->validateHeading( $data, $expectedRewardsHeading );
 	}
 
@@ -1653,7 +1654,7 @@ class ModelToolExport extends Model {
 	}
 
 
-	function validateUpload( &$reader )
+	function validateUpload( $reader )
 	{
 		$expectedWorksheets = $this->expectedWorksheets();
 		$sheetNames = $reader->getSheetNames();
@@ -1710,58 +1711,50 @@ class ModelToolExport extends Model {
 		try {
 			$this->session->data['export_nochange'] = 1;
 
-			// we use the PHPExcel package from http://phpexcel.codeplex.com/
-			$cwd = getcwd();
-			chdir( DIR_SYSTEM.'PHPExcel' );
-			require_once( 'Classes/PHPExcel.php' );
-			chdir( $cwd );
-
-			// parse uploaded spreadsheet file
-			$inputFileType = PHPExcel_IOFactory::identify($filename);
-			$objReader = PHPExcel_IOFactory::createReader($inputFileType);
-			$objReader->setReadDataOnly(true);
-			$reader = $objReader->load($filename);
-
-			// read the various worksheets and load them to the database
-			$ok = $this->validateUpload( $reader );
-			if (!$ok) {
-				return FALSE;
-			}
 			$this->clearCache();
+
 			$this->session->data['export_nochange'] = 0;
-			$ok = $this->uploadCategories( $reader );
-			if (!$ok) {
+
+			$data = $this->loadSheet($filename, 'Categories');
+			if (!$this->uploadCategories( $data )) {
 				return FALSE;
 			}
-			$ok = $this->uploadProducts( $reader );
-			if (!$ok) {
+
+			$data = $this->loadSheet($filename, 'Products');
+			if (!$this->uploadProducts( $data )) {
 				return FALSE;
 			}
-			$ok = $this->uploadAdditionalImages( $reader );
-			if (!$ok) {
+
+			$data = $this->loadSheet($filename, 'AdditionalImages');
+			if (!$this->uploadAdditionalImages( $data )) {
 				return FALSE;
 			}
-			$ok = $this->uploadOptions( $reader );
-			if (!$ok) {
+
+			$data = $this->loadSheet($filename, 'Options');
+			if (!$this->uploadOptions( $data )) {
 				return FALSE;
 			}
-			$ok = $this->uploadAttributes( $reader );
-			if (!$ok) {
+
+			$data = $this->loadSheet($filename, 'Attributes');
+			if (!$this->uploadAttributes( $data )) {
 				return FALSE;
 			}
-			$ok = $this->uploadSpecials( $reader );
-			if (!$ok) {
+
+			$data = $this->loadSheet($filename, 'Specials');
+			if (!$this->uploadSpecials( $data )) {
 				return FALSE;
 			}
-			$ok = $this->uploadDiscounts( $reader );
-			if (!$ok) {
+
+			$data = $this->loadSheet($filename, 'Discounts');
+			if (!$this->uploadDiscounts( $data )) {
 				return FALSE;
 			}
-			$ok = $this->uploadRewards( $reader );
-			if (!$ok) {
+
+			$data = $this->loadSheet($filename, 'Rewards');
+			if (!$this->uploadRewards( $data )) {
 				return FALSE;
 			}
-			return $ok;
+			return TRUE;
 		} catch (Exception $e) {
 			$errstr = $e->getMessage();
 			$errline = $e->getLine();
@@ -1775,7 +1768,70 @@ class ModelToolExport extends Model {
 		}
 	}
 
+	public function loadSheet($filename, $sheetname) {
+		require_once( DIR_SYSTEM . 'PHPExcel/Classes/PHPExcel.php' );
 
+		// parse uploaded spreadsheet file
+		$inputFileType = PHPExcel_IOFactory::identify($filename);
+		$objReader = PHPExcel_IOFactory::createReader($inputFileType);
+		$objReader->setReadDataOnly(true);
+		$objReader->setLoadSheetsOnly($sheetname);
+
+		$reader = $objReader->load($filename);
+
+		$sheetname = utf8_strtolower($sheetname);
+
+		switch ($sheetname) {
+			case 'categories':
+				if ( !$this->validateCategories( $reader ) ) {
+					error_log(date('Y-m-d H:i:s - ', time()).$this->language->get('error_categories_header')."\n",3,DIR_LOGS."error.txt");
+					return FALSE;
+				}
+				break;
+			case 'products':
+				if ( !$this->validateProducts( $reader ) ) {
+					error_log(date('Y-m-d H:i:s - ', time()).$this->language->get('error_products_header')."\n",3,DIR_LOGS."error.txt");
+					return FALSE;
+				}
+				break;
+			case 'additionalimages':
+				if ( !$this->validateAdditionalImages( $reader ) ) {
+					error_log(date('Y-m-d H:i:s - ', time()).$this->language->get('error_images_header')."\n",3,DIR_LOGS."error.txt");
+					return FALSE;
+				}
+				break;
+			case 'options':
+				if ( !$this->validateOptions( $reader ) ) {
+					error_log(date('Y-m-d H:i:s - ', time()).$this->language->get('error_options_header')."\n",3,DIR_LOGS."error.txt");
+					return FALSE;
+				}
+				break;
+			case 'attributes':
+				if ( !$this->validateAttributes( $reader )) {
+					error_log(date('Y-m-d H:i:s - ', time()).$this->language->get('error_attributes_header')."\n",3,DIR_LOGS."error.txt");
+					return FALSE;
+				}
+				break;
+			case 'discounts':
+				if ( !$this->validateDiscounts( $reader )) {
+					error_log(date('Y-m-d H:i:s - ', time()).$this->language->get('error_discounts_header')."\n",3,DIR_LOGS."error.txt");
+					return FALSE;
+				}
+				break;
+			case 'rewards':
+				if (!$this->validateRewards( $reader )) {
+					error_log(date('Y-m-d H:i:s - ', time()).$this->language->get('error_rewards_header')."\n",3,DIR_LOGS."error.txt");
+					return FALSE;
+				}
+				break;
+			default:
+				error_log(date('Y-m-d H:i:s - ', time()).$this->language->get('error_sheetname_header')."\n",3,DIR_LOGS."error.txt");
+				return FALSE;
+				break;
+		}
+
+		return $reader;
+	}
 
 	function getStoreIdsForCategories( ) {
 		$sql =  "SELECT category_id, store_id FROM `".DB_PREFIX."category_to_store` cs;";
@@ -1862,7 +1918,7 @@ class ModelToolExport extends Model {
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('store_ids'),16)+1);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('layout'),16)+1);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('status'),5)+1,$textFormat);
-		
+
 		// The heading row
 		$i = 1;
 		$j = 0;
@@ -1884,7 +1940,7 @@ class ModelToolExport extends Model {
 		$this->setCell( $worksheet, $i, $j++, 'layout', $boxFormat );
 		$this->setCell( $worksheet, $i, $j++, "status\nenabled", $boxFormat );
 		$worksheet->getRowDimension($i)->setRowHeight(30);
-		
+
 		// The actual categories data
 		$i += 1;
 		$j = 0;
@@ -2119,7 +2175,7 @@ class ModelToolExport extends Model {
 		$this->setCell( $worksheet, $i, $j++, "subtract", $boxFormat );
 		$this->setCell( $worksheet, $i, $j++, 'minimum', $boxFormat );
 		$worksheet->getRowDimension($i)->setRowHeight(30);
-		
+
 		// The actual products data
 		$i += 1;
 		$j = 0;
@@ -2205,7 +2261,7 @@ class ModelToolExport extends Model {
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('product_id'),4)+1);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('image'),30)+1);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('sort_order'),5)+1);
-		
+
 		// The additional images headings row
 		$i = 1;
 		$j = 0;
@@ -2213,7 +2269,7 @@ class ModelToolExport extends Model {
 		$this->setCell( $worksheet, $i, $j++, 'image', $boxFormat  );
 		$this->setCell( $worksheet, $i, $j++, 'sort_order', $boxFormat  );
 		$worksheet->getRowDimension($i)->setRowHeight(30);
-		
+
 		// The actual additional images data
 		$i += 1;
 		$j = 0;
@@ -2280,7 +2336,7 @@ class ModelToolExport extends Model {
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('weight'),10)+1,$priceFormat);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('weight'),5)+1,$textFormat);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('sort_order'),5)+1);
-		
+
 		// The options headings row
 		$i = 1;
 		$j = 0;
@@ -2301,7 +2357,7 @@ class ModelToolExport extends Model {
 		$this->setCell( $worksheet, $i, $j++, "weight\nprefix", $boxFormat  );
 		$this->setCell( $worksheet, $i, $j++, 'sort_order', $boxFormat  );
 		$worksheet->getRowDimension($i)->setRowHeight(30);
-		
+
 		// The actual options data
 		$i += 1;
 		$j = 0;
@@ -2358,7 +2414,7 @@ class ModelToolExport extends Model {
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('attribute_group'),30)+1);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('attribute_name'),30)+1);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('text'),30)+1);
-		
+
 		// The attributes headings row
 		$i = 1;
 		$j = 0;
@@ -2368,7 +2424,7 @@ class ModelToolExport extends Model {
 		$this->setCell( $worksheet, $i, $j++, 'attribute_name', $boxFormat  );
 		$this->setCell( $worksheet, $i, $j++, 'text', $boxFormat  );
 		$worksheet->getRowDimension($i)->setRowHeight(30);
-		
+
 		// The actual attributes data
 		$i += 1;
 		$j = 0;
@@ -2406,7 +2462,7 @@ class ModelToolExport extends Model {
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('price'),10)+1,$priceFormat);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('date_start'),19)+1,$textFormat);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('date_end'),19)+1,$textFormat);
-		
+
 		// The heading row
 		$i = 1;
 		$j = 0;
@@ -2417,7 +2473,7 @@ class ModelToolExport extends Model {
 		$this->setCell( $worksheet, $i, $j++, 'date_start', $boxFormat );
 		$this->setCell( $worksheet, $i, $j++, 'date_end', $boxFormat );
 		$worksheet->getRowDimension($i)->setRowHeight(30);
-		
+
 		// The actual product specials data
 		$i += 1;
 		$j = 0;
@@ -2457,7 +2513,7 @@ class ModelToolExport extends Model {
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('price'),10)+1,$priceFormat);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('date_start'),19)+1,$textFormat);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('date_end'),19)+1,$textFormat);
-		
+
 		// The heading row
 		$i = 1;
 		$j = 0;
@@ -2469,7 +2525,7 @@ class ModelToolExport extends Model {
 		$this->setCell( $worksheet, $i, $j++, 'date_start', $boxFormat );
 		$this->setCell( $worksheet, $i, $j++, 'date_end', $boxFormat );
 		$worksheet->getRowDimension($i)->setRowHeight(30);
-		
+
 		// The actual product discounts data
 		$i += 1;
 		$j = 0;
@@ -2506,7 +2562,7 @@ class ModelToolExport extends Model {
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(strlen('product_id')+1);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(strlen('customer_group')+1);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(strlen('points')+1);
-		
+
 		// The heading row
 		$i = 1;
 		$j = 0;
@@ -2514,7 +2570,7 @@ class ModelToolExport extends Model {
 		$this->setCell( $worksheet, $i, $j++, 'customer_group', $boxFormat );
 		$this->setCell( $worksheet, $i, $j++, 'points', $boxFormat );
 		$worksheet->getRowDimension($i)->setRowHeight(30);
-		
+
 		// The actual product rewards data
 		$i += 1;
 		$j = 0;
@@ -2532,7 +2588,7 @@ class ModelToolExport extends Model {
 
 	protected function clearSpreadsheetCache() {
 		$files = glob(DIR_CACHE . 'Spreadsheet_Excel_Writer' . '*');
-		
+
 		if ($files) {
 			foreach ($files as $file) {
 				if (file_exists($file)) {
