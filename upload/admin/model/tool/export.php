@@ -116,24 +116,20 @@ class ModelToolExport extends Model {
 	}
 
 	public function getLengthClassIds( ) {
-		// find the default language id
-		$languageId = $this->config->get('config_language_id');
+		$length_classes = array();
 
-		// find all length classes already stored in the database
-		$lengthClassIds = array();
-		$sql = "SELECT `length_class_id`, `unit` FROM `".DB_PREFIX."length_class_description` WHERE `language_id`=$languageId;";
-		$result = $this->db->query( $sql );
-		if ($result->rows) {
-			foreach ($result->rows as $row) {
-				$lengthClassId = $row['length_class_id'];
-				$unit = $row['unit'];
-				if (!isset($lengthClassIds[$unit])) {
-					$lengthClassIds[$unit] = $lengthClassId;
-				}
+		$length_class_query = $this->db->query("SELECT `length_class_id`, `unit` FROM `" . DB_PREFIX . "length_class_description` WHERE language_id = '" . (int)$this->config->get('config_language_id') . "'");
+
+		foreach ($length_class_query->rows as $row) {
+			$length_class_id = $row['length_class_id'];
+			$unit = $row['unit'];
+
+			if (!isset($length_classes[$unit])) {
+				$length_classes[$unit] = $length_class_id;
 			}
 		}
 
-		return $lengthClassIds;
+		return $length_classes;
 	}
 
 	public function getDefaultMeasurementUnit() {
