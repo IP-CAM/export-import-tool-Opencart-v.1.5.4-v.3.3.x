@@ -94,35 +94,26 @@ class ModelToolExport extends Model {
 
 
 	// Information Methods
-	public function getDefaultWeightUnit() {
-		$weightUnit = $this->weight->getUnit( $this->config->get( 'config_weight_class_id' ) );
-		return $weightUnit;
-	}
-
-	public function getDefaultMeasurementUnit() {
-		$measurementUnit = $this->length->getUnit( $this->config->get( 'config_length_class_id' ) );
-		return $measurementUnit;
-	}
-
 	public function getWeightClassIds( ) {
-		// find the default language id
-		$languageId = $this->config->get('config_language_id');
+		$weight_classes = array();
 
-		// find all weight classes already stored in the database
-		$weightClassIds = array();
-		$sql = "SELECT `weight_class_id`, `unit` FROM `".DB_PREFIX."weight_class_description` WHERE `language_id`=$languageId;";
-		$result = $this->db->query( $sql );
-		if ($result->rows) {
-			foreach ($result->rows as $row) {
-				$weightClassId = $row['weight_class_id'];
-				$unit = $row['unit'];
-				if (!isset($weightClassIds[$unit])) {
-					$weightClassIds[$unit] = $weightClassId;
-				}
+		$weight_class_query = $this->db->query("SELECT `weight_class_id`, `unit` FROM `" . DB_PREFIX . "weight_class_description` WHERE language_id = '" . (int)$this->config->get('config_language_id') . "'");
+
+		foreach ($weight_class_query->rows as $row) {
+			$weight_class_id = $row['weight_class_id'];
+			$unit = $row['unit'];
+
+			if (!isset($weight_classes[$unit])) {
+				$weight_classes[$unit] = $weight_class_id;
 			}
 		}
 
-		return $weightClassIds;
+		return $weight_classes;
+	}
+
+	public function getDefaultWeightUnit() {
+		$weightUnit = $this->weight->getUnit( $this->config->get( 'config_weight_class_id' ) );
+		return $weightUnit;
 	}
 
 	public function getLengthClassIds( ) {
@@ -144,6 +135,11 @@ class ModelToolExport extends Model {
 		}
 
 		return $lengthClassIds;
+	}
+
+	public function getDefaultMeasurementUnit() {
+		$measurementUnit = $this->length->getUnit( $this->config->get( 'config_length_class_id' ) );
+		return $measurementUnit;
 	}
 
 	public function getLayoutIds( ) {
