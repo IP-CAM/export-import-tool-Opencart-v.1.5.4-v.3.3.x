@@ -19,10 +19,25 @@
 			<add><![CDATA[$_['text_export']           = 'Export / Import';]]></add>
 		</operation>
 	</file>
+        <file name="admin/controller/common/header.php">
+                <operation>
+                        <search position="after"><![CDATA[$this->data['stores'][] = array(]]></search>
+                        <add><![CDATA[ 'store_id' => $result['store_id'],]]></add>
+                </operation>
+	</file>
 	<file name="admin/view/template/common/header.tpl">
 		<operation>
 			<search position="after"><![CDATA[<li><a href="<?php echo $backup; ?>"><?php echo $text_backup; ?></a></li>]]></search>
-			<add><![CDATA[        <li><a href="<?php echo $export; ?>"><?php echo $text_export; ?></a></li>]]></add>
+                        <add><![CDATA[ <li><a class="parent" href="<?php echo $export; ?>"><?php echo $text_export; ?></a>
+				<ul>
+					<?php foreach ($stores as $store) { ?>
+					  <li>
+					    <a href="<?php echo $this->url->link('tool/export-store', 'token=' . $this->session->data['token']."&store_id=" . $store['store_id'], 'SSL'); ?>"><?php echo $store['name']; ?></a>
+					  </li>
+					<?php } ?>
+				</ul>
+			      </li>]]>
+			</add>
 		</operation>
 	</file>
 </modification>

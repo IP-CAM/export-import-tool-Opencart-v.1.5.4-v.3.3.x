@@ -1,18 +1,19 @@
 <?php 
 class ControllerToolExportStore extends Controller { 
 	private $error = array();
+	private $name  = 'tool/export-store';
 	
 	public function index() {
 		$this->load->language('tool/export');
 		$this->document->setTitle($this->language->get('heading_title'));
-		$this->load->model('tool/export');
+		$this->load->model( $this->name );
 
 		if (($this->request->server['REQUEST_METHOD'] == 'POST') && ($this->validate())) {
 			if ((isset( $this->request->files['upload'] )) && (is_uploaded_file($this->request->files['upload']['tmp_name']))) {
 				$file = $this->request->files['upload']['tmp_name'];
 				if ($this->model_tool_export->upload($file)===TRUE) {
 					$this->session->data['success'] = $this->language->get('text_success');
-					$this->redirect( export_store_link() );
+					$this->redirect( link() );
 				}
 				else {
 					$this->error['warning'] = $this->language->get('error_upload');
@@ -64,12 +65,12 @@ class ControllerToolExportStore extends Controller {
 
 		$this->data['breadcrumbs'][] = array(
 			'text'      => $this->language->get('heading_title'),
-			'href'      => $this->export_store_link(),
+			'href'      => $this->link(),
 			'separator' => ' :: '
 		);
 		
-		$this->data['action'] = $this->export_store_link();
-		$this->data['export'] = $this->url->link('tool/export-store/download', 'token=' . $this->session->data['token'], 'SSL');
+		$this->data['action'] = $this->link();
+		$this->data['export'] = $this->download_link();
 		$this->data['post_max_size'] = $this->return_bytes( ini_get('post_max_size') );
 		$this->data['upload_max_filesize'] = $this->return_bytes( ini_get('upload_max_filesize') );
 
@@ -108,9 +109,9 @@ class ControllerToolExportStore extends Controller {
 		if ($this->validate()) {
 
 			// send the categories, products and options as a spreadsheet file
-			$this->load->model('tool/export');
+			$this->load->model( $this->name );
 			$this->model_tool_export->download();
-			$this->redirect( $this->export_store_link() );
+			$this->redirect( $this->link() );
 
 		} else {
 
@@ -133,9 +134,13 @@ class ControllerToolExportStore extends Controller {
 		}
 	}
 
-	private function export_store_link() {
-		return $this->url->link( 'tool/export-store', 'token='.$this->request->get['token'] . '&store_id=' . $this->request->get['store_id'], 'SSL' );
+	private function link() {
+		return $this->url->link( $this->name, 'token='.$this->request->get['token'] . '&store_id=' . $this->request->get['store_id'], 'SSL' );
 	}
+
+        private function download_link() {
+                return $this->url->link( $this->name . '/download', 'token='.$this->request->get['token'] . '&store_id=' . $this->request->get['store_id'], 'SSL' );
+        }
 
 }
 ?>
