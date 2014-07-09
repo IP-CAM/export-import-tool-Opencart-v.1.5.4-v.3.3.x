@@ -38,7 +38,7 @@ function error_handler_for_export($errno, $errstr, $errfile, $errline) {
 		return true;
 	}
 
-	if (($errors != "Fatal Error") && isset($request->get['route']) && ($request->get['route']!='tool/export/download'))  {
+	if (($errors != "Fatal Error") && isset($request->get['route']) && ($request->get['route']!='tool/export_store/download'))  {
 		if ($config->get('config_error_display')) {
 			echo '<b>' . $errors . '</b>: ' . $errstr . ' in <b>' . $errfile . '</b> on line <b>' . $errline . '</b>';
 		}
@@ -65,7 +65,7 @@ function fatal_error_shutdown_handler_for_export()
 }
 
 
-class ModelToolExport extends Model {
+class ModelToolExportStore extends Model {
 	public function __construct($registry) {
 		parent::__construct($registry);
 		require_once(DIR_SYSTEM . 'PHPExcel/Classes/PHPExcel.php');
@@ -210,9 +210,10 @@ class ModelToolExport extends Model {
 
 
 	// Information Methods
-	public function getAdditionalImages() {
+	public function getAdditionalImages( $storeId ) {
 		$sql  = "SELECT `product_id`, `image`, `sort_order` ";
 		$sql .=	"FROM `" . DB_PREFIX . "product_image` ";
+                $sql .= "WHERE product_id IN (SELECT DISTINCT product_id FROM `".DB_PREFIX."product_to_store` WHERE store_id=$storeId) ";
 		$sql .= "ORDER BY product_id, sort_order, image";
 
 		$images_query = $this->db->query($sql);
@@ -220,7 +221,7 @@ class ModelToolExport extends Model {
 		return $images_query->rows;
 	}
 
-	public function getAttributes($languageId) {
+	public function getAttributes($storeId, $languageId) {
 		$query  = "SELECT pa.*, ag.attribute_group_id, ag.sort_order AS attribute_group_sort_order, agd.name AS attribute_group, a.attribute_id, a.sort_order, ad.name AS attribute_name ";
 		$query .= "FROM `".DB_PREFIX."product_attribute` pa ";
 		$query .= "LEFT JOIN `".DB_PREFIX."attribute` a ON a.attribute_id=pa.attribute_id ";
@@ -228,16 +229,18 @@ class ModelToolExport extends Model {
 		$query .= "INNER JOIN `".DB_PREFIX."attribute_group` ag ON ag.attribute_group_id=a.attribute_group_id ";
 		$query .= "LEFT JOIN `".DB_PREFIX."attribute_group_description` agd ON agd.attribute_group_id=a.attribute_group_id AND agd.language_id=$languageId ";
 		$query .= "WHERE pa.language_id=$languageId ";
+                $query .= "AND pa.product_id IN (SELECT DISTINCT product_id FROM `".DB_PREFIX."product_to_store` WHERE store_id=$storeId) ";
 		$query .= "ORDER BY pa.product_id, attribute_group_sort_order, ag.attribute_group_id, a.sort_order, a.attribute_id;";
 		$result = $this->db->query( $query );
 		return $result->rows;
 	}
 
-	public function getCategories($languageId) {
+	public function getCategories($storeId, $languageId) {
 		$query  = "SELECT c.* , cd.*, ua.keyword FROM `".DB_PREFIX."category` c ";
 		$query .= "INNER JOIN `".DB_PREFIX."category_description` cd ON cd.category_id = c.category_id ";
 		$query .= " AND cd.language_id=$languageId ";
 		$query .= "LEFT JOIN `".DB_PREFIX."url_alias` ua ON ua.query=CONCAT('category_id=',c.category_id) ";
+		$query .= "WHERE c.category_id IN (SELECT DISTINCT category_id FROM `".DB_PREFIX."category_to_store` WHERE store_id=$storeId) ";
 		$query .= "ORDER BY c.`parent_id`, `sort_order`, c.`category_id`;";
 		$result = $this->db->query( $query );
 		return $result->rows;
@@ -251,10 +254,11 @@ class ModelToolExport extends Model {
 		return $this->weight->getUnit($this->config->get('config_weight_class_id'));
 	}
 
-	public function getDiscounts($languageId) {
+	public function getDiscounts($storeId, $languageId) {
 		$query  = "SELECT pd.*, cgd.name FROM `".DB_PREFIX."product_discount` pd ";
 		$query .= "LEFT JOIN `".DB_PREFIX."customer_group_description` cgd ON cgd.customer_group_id=pd.customer_group_id ";
 		$query .= "  AND cgd.language_id=$languageId ";
+                $query .= "WHERE pd.product_id IN (SELECT DISTINCT product_id FROM `".DB_PREFIX."product_to_store` WHERE store_id=$storeId) ";
 		$query .= "ORDER BY pd.product_id, cgd.name";
 		$result = $this->db->query( $query );
 		return $result->rows;
@@ -329,7 +333,7 @@ class ModelToolExport extends Model {
 		return $length_classes;
 	}
 
-	public function getOptions($languageId) {
+	public function getOptions($storeId, $languageId) {
 		$query  = "SELECT po.product_id,";
 		$query .= "  po.option_id,";
 		$query .= "  po.option_value AS default_value,";
@@ -354,12 +358,13 @@ class ModelToolExport extends Model {
 		$query .= "LEFT JOIN `".DB_PREFIX."option_value` ov ON ov.option_value_id=pov.option_value_id ";
 		$query .= "LEFT JOIN `".DB_PREFIX."option_value_description` ovd ON ovd.option_value_id=ov.option_value_id AND ovd.language_id=$languageId ";
 		$query .= "LEFT JOIN `".DB_PREFIX."option_description` od ON od.option_id=o.option_id AND od.language_id=$languageId ";
+                $query .= "WHERE po.product_id IN (SELECT DISTINCT product_id FROM `".DB_PREFIX."product_to_store` WHERE store_id=$storeId) ";
 		$query .= "ORDER BY po.product_id, po.option_id, pov.option_value_id;";
 		$result = $this->db->query( $query );
 		return $result->rows;
 	}
 
-	public function getProducts($languageId) {
+	public function getProducts($storeId, $languageId) {
 		$query  = "SELECT ";
 		$query .= "  p.product_id,";
 		$query .= "  pd.name,";
@@ -412,25 +417,28 @@ class ModelToolExport extends Model {
 		$query .= "LEFT JOIN `".DB_PREFIX."length_class_description` mc ON mc.length_class_id=p.length_class_id ";
 		$query .= "  AND mc.language_id=$languageId ";
 		$query .= "LEFT JOIN `".DB_PREFIX."product_related` pr ON pr.product_id=p.product_id ";
+                $query .= "WHERE p.product_id IN (SELECT DISTINCT product_id FROM `".DB_PREFIX."product_to_store` WHERE store_id=$storeId) ";
 		$query .= "GROUP BY p.product_id ";
 		$query .= "ORDER BY p.product_id, pc.category_id; ";
 		$result = $this->db->query( $query );
 		return $result->rows;
 	}
 
-	public function getRewards($languageId) {
+	public function getRewards($storeId, $languageId) {
 		$query  = "SELECT pr.*, cgd.name FROM `".DB_PREFIX."product_reward` pr ";
 		$query .= "LEFT JOIN `".DB_PREFIX."customer_group_description` cgd ON cgd.customer_group_id=pr.customer_group_id ";
 		$query .= "  AND cgd.language_id=$languageId ";
+                $query .= "WHERE pr.product_id IN (SELECT DISTINCT product_id FROM `".DB_PREFIX."product_to_store` WHERE store_id=$storeId) ";
 		$query .= "ORDER BY pr.product_id, cgd.name";
 		$result = $this->db->query( $query );
 		return $result->rows;
 	}
 
-	public function getSpecials($languageId) {
+	public function getSpecials($storeId, $languageId) {
 		$query  = "SELECT ps.*, cgd.name FROM `".DB_PREFIX."product_special` ps ";
 		$query .= "LEFT JOIN `".DB_PREFIX."customer_group_description` cgd ON cgd.customer_group_id=ps.customer_group_id ";
 		$query .= "  AND cgd.language_id=$languageId ";
+                $query .= "WHERE ps.product_id IN (SELECT DISTINCT product_id FROM `".DB_PREFIX."product_to_store` WHERE store_id=$storeId) ";
 		$query .= "ORDER BY ps.product_id, cgd.name";
 		$result = $this->db->query( $query );
 		return $result->rows;
@@ -1909,7 +1917,7 @@ class ModelToolExport extends Model {
 
 
 	// Populate Spreadsheet
-	protected function populateAdditionalImagesWorksheet(&$worksheet, &$boxFormat) {
+	protected function populateAdditionalImagesWorksheet(&$worksheet, $storeId, &$boxFormat) {
 		// Set the column widths
 		$j = 0;
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('product_id'),4)+1);
@@ -1927,7 +1935,7 @@ class ModelToolExport extends Model {
 		// The actual additional images data
 		$i += 1;
 		$j = 0;
-		$addtionalImages = $this->getAdditionalImages( );
+		$addtionalImages = $this->getAdditionalImages( $storeId );
 		foreach ($addtionalImages as $row) {
 			$worksheet->getRowDimension($i)->setRowHeight(13);
 			$this->setCell( $worksheet, $i, $j++, $row['product_id'] );
@@ -1938,7 +1946,7 @@ class ModelToolExport extends Model {
 		}
 	}
 
-	protected function populateAttributesWorksheet(&$worksheet, $languageId, &$boxFormat, $textFormat) {
+	protected function populateAttributesWorksheet(&$worksheet, $storeId, $languageId, &$boxFormat, $textFormat) {
 		// Set the column widths
 		$j = 0;
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('product_id'),4)+1);
@@ -1960,7 +1968,7 @@ class ModelToolExport extends Model {
 		// The actual attributes data
 		$i += 1;
 		$j = 0;
-		$attributes = $this->getAttributes( $languageId );
+		$attributes = $this->getAttributes( $storeId, $languageId );
 		foreach ($attributes as $row) {
 			$worksheet->getRowDimension($i)->setRowHeight(13);
 			$this->setCell( $worksheet, $i, $j++, $row['product_id'] );
@@ -1973,7 +1981,7 @@ class ModelToolExport extends Model {
 		}
 	}
 
-	protected function populateCategoriesWorksheet(&$worksheet, $languageId, &$boxFormat, &$textFormat) {
+	protected function populateCategoriesWorksheet(&$worksheet, $storeId, $languageId, &$boxFormat, &$textFormat) {
 		// Set the column widths
 		$j = 0;
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(strlen('category_id')+1);
@@ -1990,7 +1998,6 @@ class ModelToolExport extends Model {
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('description'),32)+1);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('meta_description'),32)+1);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('meta_keywords'),32)+1);
-		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('store_ids'),16)+1);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('layout'),16)+1);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('status'),5)+1,$textFormat);
 
@@ -2011,7 +2018,6 @@ class ModelToolExport extends Model {
 		$this->setCell( $worksheet, $i, $j++, 'description', $boxFormat );
 		$this->setCell( $worksheet, $i, $j++, 'meta_description', $boxFormat );
 		$this->setCell( $worksheet, $i, $j++, 'meta_keywords', $boxFormat );
-		$this->setCell( $worksheet, $i, $j++, 'store_ids', $boxFormat );
 		$this->setCell( $worksheet, $i, $j++, 'layout', $boxFormat );
 		$this->setCell( $worksheet, $i, $j++, "status\nenabled", $boxFormat );
 		$worksheet->getRowDimension($i)->setRowHeight(30);
@@ -2019,9 +2025,8 @@ class ModelToolExport extends Model {
 		// The actual categories data
 		$i += 1;
 		$j = 0;
-		$storeIds = $this->getStoreIdsForCategories();
 		$layouts = $this->getLayoutsForCategories();
-		$categories = $this->getCategories( $languageId );
+		$categories = $this->getCategories( $storeId, $languageId );
 		foreach ($categories as $row) {
 			$worksheet->getRowDimension($i)->setRowHeight(26);
 			$this->setCell( $worksheet, $i, $j++, $row['category_id'] );
@@ -2040,18 +2045,14 @@ class ModelToolExport extends Model {
 			$this->setCell( $worksheet, $i, $j++, html_entity_decode($row['meta_keyword'],ENT_QUOTES,'UTF-8') );
 			$storeIdList = '';
 			$categoryId = $row['category_id'];
-			if (isset($storeIds[$categoryId])) {
-				foreach ($storeIds[$categoryId] as $storeId) {
-					$storeIdList .= ($storeIdList=='') ? $storeId : ','.$storeId;
-				}
-			}
-			$this->setCell( $worksheet, $i, $j++, $storeIdList, $textFormat );
 			$layoutList = '';
+/*
 			if (isset($layouts[$categoryId])) {
 				foreach ($layouts[$categoryId] as $storeId => $name) {
 					$layoutList .= ($layoutList=='') ? $storeId.':'.$name : ','.$storeId.':'.$name;
 				}
 			}
+*/
 			$this->setCell( $worksheet, $i, $j++, $layoutList, $textFormat );
 			$this->setCell( $worksheet, $i, $j++, ($row['status']==0) ? "false" : "true", $textFormat );
 			$i += 1;
@@ -2059,7 +2060,7 @@ class ModelToolExport extends Model {
 		}
 	}
 
-	protected function populateDiscountsWorksheet(&$worksheet, $languageId, &$priceFormat, &$boxFormat, &$textFormat) {
+	protected function populateDiscountsWorksheet(&$worksheet, $storeId, $languageId, &$priceFormat, &$boxFormat, &$textFormat) {
 		// Set the column widths
 		$j = 0;
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(strlen('product_id')+1);
@@ -2085,7 +2086,7 @@ class ModelToolExport extends Model {
 		// The actual product discounts data
 		$i += 1;
 		$j = 0;
-		$discounts = $this->getDiscounts( $languageId );
+		$discounts = $this->getDiscounts( $storeId, $languageId );
 		foreach ($discounts as $row) {
 			$worksheet->getRowDimension($i)->setRowHeight(13);
 			$this->setCell( $worksheet, $i, $j++, $row['product_id'] );
@@ -2100,7 +2101,7 @@ class ModelToolExport extends Model {
 		}
 	}
 
-	protected function populateOptionsWorksheet(&$worksheet, $languageId, &$priceFormat, &$boxFormat, &$weightFormat, $textFormat) {
+	protected function populateOptionsWorksheet(&$worksheet, $storeId, $languageId, &$priceFormat, &$boxFormat, &$weightFormat, $textFormat) {
 		// Set the column widths
 		$j = 0;
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('product_id'),4)+1);
@@ -2144,7 +2145,7 @@ class ModelToolExport extends Model {
 		// The actual options data
 		$i += 1;
 		$j = 0;
-		$options = $this->getOptions( $languageId );
+		$options = $this->getOptions( $storeId, $languageId );
 		foreach ($options as $row) {
 			$worksheet->getRowDimension($i)->setRowHeight(13);
 			$this->setCell( $worksheet, $i, $j++, $row['product_id'] );
@@ -2173,7 +2174,7 @@ class ModelToolExport extends Model {
 		}
 	}
 
-	protected function populateProductsWorksheet(&$worksheet, $languageId, &$priceFormat, &$boxFormat, &$weightFormat, &$textFormat) {
+	protected function populateProductsWorksheet(&$worksheet, $storeId, $languageId, &$priceFormat, &$boxFormat, &$weightFormat, &$textFormat) {
 		// Set the column widths
 		$j = 0;
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('product_id'),4)+1);
@@ -2211,7 +2212,6 @@ class ModelToolExport extends Model {
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('meta_description'),32)+1,$textFormat);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('meta_keywords'),32)+1,$textFormat);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('stock_status_id'),3)+1);
-		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('store_ids'),16)+1,$textFormat);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('layout'),16)+1,$textFormat);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('related_ids'),16)+1,$textFormat);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('tags'),32)+1,$textFormat);
@@ -2257,7 +2257,6 @@ class ModelToolExport extends Model {
 		$this->setCell( $worksheet, $i, $j++, 'meta_description', $boxFormat );
 		$this->setCell( $worksheet, $i, $j++, 'meta_keywords', $boxFormat );
 		$this->setCell( $worksheet, $i, $j++, 'stock_status_id', $boxFormat );
-		$this->setCell( $worksheet, $i, $j++, 'store_ids', $boxFormat );
 		$this->setCell( $worksheet, $i, $j++, 'layout', $boxFormat );
 		$this->setCell( $worksheet, $i, $j++, 'related_ids', $boxFormat );
 		$this->setCell( $worksheet, $i, $j++, 'tags', $boxFormat );
@@ -2269,9 +2268,8 @@ class ModelToolExport extends Model {
 		// The actual products data
 		$i += 1;
 		$j = 0;
-		$storeIds = $this->getStoreIdsForProducts();
 		$layouts = $this->getLayoutsForProducts();
-		$products = $this->getProducts( $languageId );
+		$products = $this->getProducts( $storeId, $languageId );
 		foreach ($products as $row) {
 			$worksheet->getRowDimension($i)->setRowHeight(26);
 			$productId = $row['product_id'];
@@ -2310,19 +2308,14 @@ class ModelToolExport extends Model {
 			$this->setCell( $worksheet, $i, $j++, html_entity_decode($row['meta_description'],ENT_QUOTES,'UTF-8'), $textFormat );
 			$this->setCell( $worksheet, $i, $j++, html_entity_decode($row['meta_keyword'],ENT_QUOTES,'UTF-8'), $textFormat );
 			$this->setCell( $worksheet, $i, $j++, $row['stock_status_id'] );
-			$storeIdList = '';
-			if (isset($storeIds[$productId])) {
-				foreach ($storeIds[$productId] as $storeId) {
-					$storeIdList .= ($storeIdList=='') ? $storeId : ','.$storeId;
-				}
-			}
-			$this->setCell( $worksheet, $i, $j++, $storeIdList, $textFormat );
 			$layoutList = '';
+/*
 			if (isset($layouts[$productId])) {
 				foreach ($layouts[$productId] as $storeId => $name) {
 					$layoutList .= ($layoutList=='') ? $storeId.':'.$name : ','.$storeId.':'.$name;
 				}
 			}
+*/
 			$this->setCell( $worksheet, $i, $j++, $layoutList, $textFormat );
 			$this->setCell( $worksheet, $i, $j++, $row['related'], $textFormat );
 			$this->setCell( $worksheet, $i, $j++, ($row['tag']) ? $row['tag'] : '' );
@@ -2334,7 +2327,7 @@ class ModelToolExport extends Model {
 		}
 	}
 
-	protected function populateRewardsWorksheet(&$worksheet, $languageId, &$boxFormat) {
+	protected function populateRewardsWorksheet(&$worksheet, $storeId, $languageId, &$boxFormat) {
 		// Set the column widths
 		$j = 0;
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(strlen('product_id')+1);
@@ -2352,7 +2345,7 @@ class ModelToolExport extends Model {
 		// The actual product rewards data
 		$i += 1;
 		$j = 0;
-		$rewards = $this->getRewards( $languageId );
+		$rewards = $this->getRewards( $storeId, $languageId );
 		foreach ($rewards as $row) {
 			$worksheet->getRowDimension($i)->setRowHeight(13);
 			$this->setCell( $worksheet, $i, $j++, $row['product_id'] );
@@ -2363,7 +2356,7 @@ class ModelToolExport extends Model {
 		}
 	}
 
-	protected function populateSpecialsWorksheet(&$worksheet, $languageId, &$priceFormat, &$boxFormat, &$textFormat) {
+	protected function populateSpecialsWorksheet(&$worksheet, $storeId, $languageId, &$priceFormat, &$boxFormat, &$textFormat) {
 		// Set the column widths
 		$j = 0;
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(strlen('product_id')+1);
@@ -2387,7 +2380,7 @@ class ModelToolExport extends Model {
 		// The actual product specials data
 		$i += 1;
 		$j = 0;
-		$specials = $this->getSpecials( $languageId );
+		$specials = $this->getSpecials( $storeId, $languageId );
 		foreach ($specials as $row) {
 			$worksheet->getRowDimension($i)->setRowHeight(13);
 			$this->setCell( $worksheet, $i, $j++, $row['product_id'] );
@@ -2421,6 +2414,7 @@ class ModelToolExport extends Model {
 			set_time_limit( 1800 );
 
 			$languageId = $this->config->get('config_language_id');
+			$storeId = $registry->get('request')->get['store_id'];
 
 			// create a new workbook
 			$workbook = new PHPExcel();
@@ -2493,7 +2487,7 @@ class ModelToolExport extends Model {
 			$workbook->setActiveSheetIndex(0);
 			$worksheet = $workbook->getActiveSheet();
 			$worksheet->setTitle( 'Categories' );
-			$this->populateCategoriesWorksheet( $worksheet, $languageId, $boxFormat, $textFormat );
+			$this->populateCategoriesWorksheet( $worksheet, $storeId, $languageId, $boxFormat, $textFormat );
 			$worksheet->freezePaneByColumnAndRow( 1, 2 );
 
 			// creating the Products worksheet
@@ -2501,7 +2495,7 @@ class ModelToolExport extends Model {
 			$workbook->setActiveSheetIndex(1);
 			$worksheet = $workbook->getActiveSheet();
 			$worksheet->setTitle( 'Products' );
-			$this->populateProductsWorksheet( $worksheet, $languageId, $priceFormat, $boxFormat, $weightFormat, $textFormat );
+			$this->populateProductsWorksheet( $worksheet, $storeId, $languageId, $priceFormat, $boxFormat, $weightFormat, $textFormat );
 			$worksheet->freezePaneByColumnAndRow( 1, 2 );
 
 			// creating the AdditionalImages worksheet
@@ -2509,7 +2503,7 @@ class ModelToolExport extends Model {
 			$workbook->setActiveSheetIndex(2);
 			$worksheet = $workbook->getActiveSheet();
 			$worksheet->setTitle( 'AdditionalImages' );
-			$this->populateAdditionalImagesWorksheet( $worksheet, $boxFormat );
+			$this->populateAdditionalImagesWorksheet( $worksheet, $storeId, $boxFormat );
 			$worksheet->freezePaneByColumnAndRow( 1, 2 );
 
 			// creating the Options worksheet
@@ -2517,7 +2511,7 @@ class ModelToolExport extends Model {
 			$workbook->setActiveSheetIndex(3);
 			$worksheet = $workbook->getActiveSheet();
 			$worksheet->setTitle( 'Options' );
-			$this->populateOptionsWorksheet( $worksheet, $languageId, $priceFormat, $boxFormat, $weightFormat, $textFormat );
+			$this->populateOptionsWorksheet( $worksheet, $storeId, $languageId, $priceFormat, $boxFormat, $weightFormat, $textFormat );
 			$worksheet->freezePaneByColumnAndRow( 1, 2 );
 
 			// creating the Attributes worksheet
@@ -2525,7 +2519,7 @@ class ModelToolExport extends Model {
 			$workbook->setActiveSheetIndex(4);
 			$worksheet = $workbook->getActiveSheet();
 			$worksheet->setTitle( 'Attributes' );
-			$this->populateAttributesWorksheet( $worksheet, $languageId, $boxFormat, $textFormat );
+			$this->populateAttributesWorksheet( $worksheet, $storeId, $languageId, $boxFormat, $textFormat );
 			$worksheet->freezePaneByColumnAndRow( 1, 2 );
 
 			// creating the Specials worksheet
@@ -2533,7 +2527,7 @@ class ModelToolExport extends Model {
 			$workbook->setActiveSheetIndex(5);
 			$worksheet = $workbook->getActiveSheet();
 			$worksheet->setTitle( 'Specials' );
-			$this->populateSpecialsWorksheet( $worksheet, $languageId, $priceFormat, $boxFormat, $textFormat );
+			$this->populateSpecialsWorksheet( $worksheet, $storeId, $languageId, $priceFormat, $boxFormat, $textFormat );
 			$worksheet->freezePaneByColumnAndRow( 1, 2 );
 
 			// creating the Discounts worksheet
@@ -2541,7 +2535,7 @@ class ModelToolExport extends Model {
 			$workbook->setActiveSheetIndex(6);
 			$worksheet = $workbook->getActiveSheet();
 			$worksheet->setTitle( 'Discounts' );
-			$this->populateDiscountsWorksheet( $worksheet, $languageId, $priceFormat, $boxFormat, $textFormat );
+			$this->populateDiscountsWorksheet( $worksheet, $storeId, $languageId, $priceFormat, $boxFormat, $textFormat );
 			$worksheet->freezePaneByColumnAndRow( 1, 2 );
 
 			// creating the Rewards worksheet
@@ -2549,7 +2543,7 @@ class ModelToolExport extends Model {
 			$workbook->setActiveSheetIndex(7);
 			$worksheet = $workbook->getActiveSheet();
 			$worksheet->setTitle( 'Rewards' );
-			$this->populateRewardsWorksheet( $worksheet, $languageId, $boxFormat );
+			$this->populateRewardsWorksheet( $worksheet, $storeId, $languageId, $boxFormat );
 			$worksheet->freezePaneByColumnAndRow( 1, 2 );
 
 			$workbook->setActiveSheetIndex(0);
