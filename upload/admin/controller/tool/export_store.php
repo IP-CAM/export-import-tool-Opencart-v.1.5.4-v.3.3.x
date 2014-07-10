@@ -13,7 +13,7 @@ class ControllerToolExportStore extends Controller {
 				$file = $this->request->files['upload']['tmp_name'];
 				if ($this->model_tool_export_store->upload($file)===TRUE) {
 					$this->session->data['success'] = $this->language->get('text_success');
-					$this->redirect( link() );
+					$this->redirect( $this->link() );
 				}
 				else {
 					$this->error['warning'] = $this->language->get('error_upload');

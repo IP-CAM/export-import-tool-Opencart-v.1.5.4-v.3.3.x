@@ -280,6 +280,43 @@ class ModelToolExportStore extends Model {
 		return $layouts;
 	}
 
+        public function getFiltersForProducts( $storeId ) {
+                $query  = "SELECT product_id, filter_id FROM `".DB_PREFIX."product_filter` p ";
+                $query .= "WHERE p.product_id IN (SELECT DISTINCT product_id FROM `".DB_PREFIX."product_to_store` WHERE store_id=$storeId) ";
+		$query .= "ORDER BY product_id, filter_id";
+		$result = $this->db->query( $query );
+
+                $filters = array();
+                foreach ($result->rows as $row) {
+                        $productId = $row['product_id'];
+                        $filterId = $row['filter_id'];
+                        if (!isset($filters[$productId])) {
+                                $filters[$productId] = array();
+                        }
+			array_push($filters[$productId], $filterId);
+                }
+                return $filters;
+        }
+
+        public function getFiltersForCategories( $storeId ) {
+                $query  = "SELECT category_id, filter_id FROM `".DB_PREFIX."category_filter` c ";
+                $query .= "WHERE c.category_id IN (SELECT DISTINCT category_id FROM `".DB_PREFIX."category_to_store` WHERE store_id=$storeId) ";
+                $query .= "ORDER BY category_id, filter_id";
+                $result = $this->db->query( $query );
+
+                $filters = array();
+                foreach ($result->rows as $row) {
+                        $categoryId = $row['category_id'];
+                        $filterId = $row['filter_id'];
+                        if (!isset($filters[$categoryId])) {
+                                $filters[$categoryId] = array();
+                        }
+                        array_push($filters[$categoryId], $filterId);
+                }
+                return $filters;
+        }
+
+
 	public function getLayoutsForCategories( ) {
 		$sql  = "SELECT cl.*, l.name FROM `".DB_PREFIX."category_to_layout` cl ";
 		$sql .= "LEFT JOIN `".DB_PREFIX."layout` l ON cl.layout_id = l.layout_id ";
@@ -642,18 +679,20 @@ class ModelToolExportStore extends Model {
 		return true;
 	}
 
-	public function storeCategoriesIntoDatabase(&$categories)	{
+	public function storeCategoriesIntoDatabase($storeId, &$categories)	{
 		// find the default language id
 		$languageId = $this->config->get('config_language_id');
 
 		// start transaction, remove categories
 		$sql = "START TRANSACTION;\n";
-		$sql .= "DELETE FROM `".DB_PREFIX."category`;\n";
-		$sql .= "DELETE FROM `".DB_PREFIX."category_description` WHERE language_id=$languageId;\n";
-		$sql .= "DELETE FROM `".DB_PREFIX."category_to_store`;\n";
-		$sql .= "DELETE FROM `".DB_PREFIX."url_alias` WHERE `query` LIKE 'category_id=%';\n";
-		$sql .= "DELETE FROM `".DB_PREFIX."category_to_layout`;\n";
-		$sql .= "DELETE FROM `".DB_PREFIX."category_path`;\n";
+		$sql .= "CREATE TEMPORARY TABLE category_t AS SELECT DISTINCT category_id FROM `".DB_PREFIX."category_to_store` WHERE store_id=$storeId;\n";
+		$sql .= "DELETE FROM `".DB_PREFIX."category` WHERE category_id IN (SELECT * FROM category_t);\n";
+		$sql .= "DELETE FROM `".DB_PREFIX."category_description` WHERE language_id=$languageId AND category_id IN (SELECT * FROM category_t);\n";
+		$sql .= "DELETE FROM `".DB_PREFIX."category_to_store` WHERE category_id IN (SELECT * FROM category_t);\n";
+//		$sql .= "DELETE FROM `".DB_PREFIX."url_alias` WHERE `query` LIKE 'category_id=%';\n";
+		$sql .= "DELETE FROM `".DB_PREFIX."category_to_layout` WHERE category_id IN (SELECT * FROM category_t);\n";
+		$sql .= "DELETE FROM `".DB_PREFIX."category_path` WHERE category_id IN (SELECT * FROM category_t);\n";
+                $sql .= "DELETE FROM `".DB_PREFIX."category_filter` WHERE category_id IN (SELECT * FROM category_t);\n";
 		$this->multiquery( $sql );
 
 		// get pre-defined layouts
@@ -679,7 +718,6 @@ class ModelToolExportStore extends Model {
 			$meta_description = $this->db->escape($category['meta_description']);
 			$meta_keywords = $this->db->escape($category['meta_keywords']);
 			$keyword = $this->db->escape($category['seo_keyword']);
-			$storeIds = $category['store_ids'];
 			$layout = $category['layout'];
 			$status = $category['status'];
 			$status = ((strtoupper($status)=="TRUE") || (strtoupper($status)=="YES") || (strtoupper($status)=="ENABLED")) ? 1 : 0;
@@ -696,12 +734,10 @@ class ModelToolExportStore extends Model {
 				$sql5 = "INSERT INTO `".DB_PREFIX."url_alias` (`query`,`keyword`) VALUES ('category_id=$categoryId','$keyword');";
 				$this->db->query($sql5);
 			}
-			foreach ($storeIds as $storeId) {
-				if (in_array((int)$storeId,$availableStoreIds)) {
-					$sql6 = "INSERT INTO `".DB_PREFIX."category_to_store` (`category_id`,`store_id`) VALUES ($categoryId,$storeId);";
-					$this->db->query($sql6);
-				}
-			}
+
+			$sql6 = "INSERT INTO `".DB_PREFIX."category_to_store` (`category_id`,`store_id`) VALUES ($categoryId,$storeId);";
+			$this->db->query($sql6);
+
 			$layouts = array();
 			foreach ($layout as $layoutPart) {
 				$nextLayout = explode(':',$layoutPart);
@@ -724,6 +760,11 @@ class ModelToolExportStore extends Model {
 			foreach ($layouts as $storeId => $layoutId) {
 				$sql7 = "INSERT INTO `".DB_PREFIX."category_to_layout` (`category_id`,`store_id`,`layout_id`) VALUES ($categoryId,$storeId,$layoutId);";
 				$this->db->query($sql7);
+			}
+
+			foreach ($category['filter_id'] as $filterId) {
+				$sql8 = "INSERT INTO `".DB_PREFIX."category_filter` (`category_id`, `filter_id`) VALUES ($categoryId, $filterId);";
+                                $this->db->query($sql8);
 			}
 		}
 
@@ -1028,21 +1069,22 @@ class ModelToolExportStore extends Model {
 		return true;
 	}
 
-	public function storeProductsIntoDatabase(&$products)
+	public function storeProductsIntoDatabase($storeId, &$products)
 	{
 		// find the default language id
 		$languageId = $this->config->get('config_language_id');
 
 		// start transaction, remove products
 		$sql = "START TRANSACTION;\n";
-		$sql .= "DELETE FROM `".DB_PREFIX."product`;\n";
+                $sql .= "CREATE TEMPORARY TABLE product_t AS SELECT DISTINCT product_id FROM `".DB_PREFIX."product_to_store` WHERE store_id=$storeId;\n";
+		$sql .= "DELETE FROM `".DB_PREFIX."product` WHERE product_id IN (SELECT * FROM product_t);\n";
 		$sql .= "DELETE FROM `".DB_PREFIX."product_description` WHERE language_id=$languageId;\n";
-		$sql .= "DELETE FROM `".DB_PREFIX."product_to_category`;\n";
-		$sql .= "DELETE FROM `".DB_PREFIX."product_to_store`;\n";
-		$sql .= "DELETE FROM `".DB_PREFIX."manufacturer_to_store`;\n";
-		$sql .= "DELETE FROM `".DB_PREFIX."url_alias` WHERE `query` LIKE 'product_id=%';\n";
-		$sql .= "DELETE FROM `".DB_PREFIX."product_related`;\n";
-		$sql .= "DELETE FROM `".DB_PREFIX."product_to_layout`;\n";
+		$sql .= "DELETE FROM `".DB_PREFIX."product_to_category` WHERE product_id IN (SELECT * FROM product_t);\n";
+		$sql .= "DELETE FROM `".DB_PREFIX."product_to_store` WHERE product_id IN (SELECT * FROM product_t);\n";
+		$sql .= "DELETE FROM `".DB_PREFIX."manufacturer_to_store` WHERE store_id=$storeId;\n";
+//		$sql .= "DELETE FROM `".DB_PREFIX."url_alias` WHERE `query` LIKE 'product_id=%';\n";
+		$sql .= "DELETE FROM `".DB_PREFIX."product_related` WHERE product_id IN (SELECT * FROM product_t);\n";
+		$sql .= "DELETE FROM `".DB_PREFIX."product_to_layout` WHERE product_id IN (SELECT * FROM product_t);\n";
 		$this->multiquery( $sql );
 
 		// get pre-defined layouts
@@ -1053,7 +1095,7 @@ class ModelToolExportStore extends Model {
 
 		// store or update manufacturers
 		$manufacturerIds = array();
-		$ok = $this->storeManufacturersIntoDatabase( $products, $manufacturerIds );
+		$ok = true;//$this->storeManufacturersIntoDatabase( $products, $manufacturerIds );
 		if (!$ok) {
 			$this->db->query( 'ROLLBACK;' );
 			return false;
@@ -1073,7 +1115,7 @@ class ModelToolExportStore extends Model {
 			$quantity = $product['quantity'];
 			$model = $this->db->escape($product['model']);
 			$manufacturerName = $product['manufacturer'];
-			$manufacturerId = ($manufacturerName=="") ? 0 : $manufacturerIds[$manufacturerName];
+			$manufacturerId = 0;//($manufacturerName=="") ? 0 : $manufacturerIds[$manufacturerName];
 			$imageName = $product['image'];
 			$shipping = $product['shipping'];
 			$shipping = ((strtoupper($shipping)=="YES") || (strtoupper($shipping)=="Y") || (strtoupper($shipping)=="TRUE")) ? 1 : 0;
@@ -1105,7 +1147,6 @@ class ModelToolExportStore extends Model {
 			$isbn = $this->db->escape($product['isbn']);
 			$mpn = $this->db->escape($product['mpn']);
 			$location = $this->db->escape($product['location']);
-			$storeIds = $product['store_ids'];
 			$layout = $product['layout'];
 			$related = $product['related_ids'];
 			$subtract = $product['subtract'];
@@ -1143,12 +1184,10 @@ class ModelToolExportStore extends Model {
 				$sql4 = "INSERT INTO `".DB_PREFIX."url_alias` (`query`,`keyword`) VALUES ('product_id=$productId','$keyword');";
 				$this->db->query($sql4);
 			}
-			foreach ($storeIds as $storeId) {
-				if (in_array((int)$storeId,$availableStoreIds)) {
-					$sql6 = "INSERT INTO `".DB_PREFIX."product_to_store` (`product_id`,`store_id`) VALUES ($productId,$storeId);";
-					$this->db->query($sql6);
-				}
-			}
+
+			$sql6 = "INSERT INTO `".DB_PREFIX."product_to_store` (`product_id`,`store_id`) VALUES ($productId,$storeId);";
+			$this->db->query($sql6);
+/*
 			$layouts = array();
 			foreach ($layout as $layoutPart) {
 				$nextLayout = explode(':',$layoutPart);
@@ -1172,6 +1211,7 @@ class ModelToolExportStore extends Model {
 				$sql7 = "INSERT INTO `".DB_PREFIX."product_to_layout` (`product_id`,`store_id`,`layout_id`) VALUES ($productId,$storeId,$layoutId);";
 				$this->db->query($sql7);
 			}
+*/
 			if (count($related) > 0) {
 				$sql = "INSERT INTO `".DB_PREFIX."product_related` (`product_id`,`related_id`) VALUES ";
 				$first = true;
@@ -1425,7 +1465,7 @@ class ModelToolExportStore extends Model {
 		return $this->storeAttributesIntoDatabase( $attributes );
 	}
 
-	public function uploadCategories(&$reader) {
+	public function uploadCategories($storeId, &$reader) {
 		// find the default language id
 		$languageId = $this->config->get('config_language_id');
 
@@ -1466,8 +1506,8 @@ class ModelToolExportStore extends Model {
 			$meta_description = htmlentities( $meta_description, ENT_QUOTES, $this->detect_encoding($meta_description) );
 			$meta_keywords = $this->getCell($data,$i,$j++);
 			$meta_keywords = htmlentities( $meta_keywords, ENT_QUOTES, $this->detect_encoding($meta_keywords) );
-			$storeIds = $this->getCell($data,$i,$j++);
 			$layout = $this->getCell($data,$i,$j++,'');
+			$filter = $this->getCell($data,$i,$j++,'');
 			$status = $this->getCell($data,$i,$j++,'true');
 			$category = array();
 			$category['category_id'] = $categoryId;
@@ -1484,19 +1524,15 @@ class ModelToolExportStore extends Model {
 			$category['meta_description'] = $meta_description;
 			$category['meta_keywords'] = $meta_keywords;
 			$category['seo_keyword'] = $keyword;
-			$storeIds = trim( $this->clean($storeIds, false) );
-			$category['store_ids'] = ($storeIds=="") ? array() : explode( ",", $storeIds );
-			if ($category['store_ids']===false) {
-				$category['store_ids'] = array();
-			}
 			$category['layout'] = ($layout=="") ? array() : explode( ",", $layout );
 			if ($category['layout']===false) {
 				$category['layout'] = array();
 			}
 			$category['status'] = $status;
+			$category['filter_id'] = explode(',', $filter);
 			$categories[$categoryId] = $this->moreCategoryCells( $i, $j, $data, $category );
 		}
-		return $this->storeCategoriesIntoDatabase( $categories );
+		return $this->storeCategoriesIntoDatabase( $storeId, $categories );
 	}
 
 	public function uploadOptions(&$reader) {
@@ -1560,7 +1596,7 @@ class ModelToolExportStore extends Model {
 		return $this->storeOptionsIntoDatabase( $options );
 	}
 
-	public function uploadProducts(&$reader) {
+	public function uploadProducts($storeId, &$reader) {
 		// find the default language id and default units
 		$languageId = $this->config->get('config_language_id');
 		$defaultWeightUnit = $this->getDefaultWeightUnit();
@@ -1627,7 +1663,6 @@ class ModelToolExportStore extends Model {
 			$meta_keywords = $this->getCell($data,$i,$j++);
 			$meta_keywords = htmlentities( $meta_keywords, ENT_QUOTES, $this->detect_encoding($meta_keywords) );
 			$stockStatusId = $this->getCell($data,$i,$j++,$defaultStockStatusId);
-			$storeIds = $this->getCell($data,$i,$j++);
 			$layout = $this->getCell($data,$i,$j++);
 			$related = $this->getCell($data,$i,$j++);
 			$tags = $this->getCell($data,$i,$j++);
@@ -1635,6 +1670,7 @@ class ModelToolExportStore extends Model {
 			$sort_order = $this->getCell($data,$i,$j++,'0');
 			$subtract = $this->getCell($data,$i,$j++,'true');
 			$minimum = $this->getCell($data,$i,$j++,'1');
+			$filters = $this->getCell($data,$i,$j++,'');
 			$product = array();
 			$product['product_id'] = $productId;
 			$product['name'] = $name;
@@ -1674,11 +1710,6 @@ class ModelToolExportStore extends Model {
 			$product['isbn'] = $isbn;
 			$product['mpn'] = $mpn;
 			$product['location'] = $location;
-			$storeIds = trim( $this->clean($storeIds, false) );
-			$product['store_ids'] = ($storeIds=="") ? array() : explode( ",", $storeIds );
-			if ($product['store_ids']===false) {
-				$product['store_ids'] = array();
-			}
 			$product['related_ids'] = ($related=="") ? array() : explode( ",", $related );
 			if ($product['related_ids']===false) {
 				$product['related_ids'] = array();
@@ -1692,9 +1723,10 @@ class ModelToolExportStore extends Model {
 			$product['meta_keywords'] = $meta_keywords;
 			$product['tags'] = $tags;
 			$product['sort_order'] = $sort_order;
+			$product['filters'] = explode(",", $filters);
 			$products[$productId] = $this->moreProductCells( $i, $j, $data, $product );
 		}
-		return $this->storeProductsIntoDatabase( $products );
+		return $this->storeProductsIntoDatabase( $storeId, $products );
 	}
 
 	public function uploadRewards(&$reader) {
@@ -1888,7 +1920,7 @@ class ModelToolExportStore extends Model {
 	}
 
 	protected function expectedCategoriesHeading() {
-		return array( "category_id", "parent_id", "name", "top", "columns", "sort_order", "image_name", "date_added", "date_modified", "language_id", "seo_keyword", "description", "meta_description", "meta_keywords", "store_ids", "layout", "status\nenabled" );
+		return array( "category_id", "parent_id", "name", "top", "columns", "sort_order", "image_name", "date_added", "date_modified", "language_id", "seo_keyword", "description", "meta_description", "meta_keywords", "layout", "filter_id", "status\nenabled" );
 	}
 
 	protected function expectedDiscountsHeading() {
@@ -1900,7 +1932,7 @@ class ModelToolExportStore extends Model {
 	}
 
 	protected function expectedProductsHeading() {
-		return array( "product_id", "name", "categories", "sku", "upc", "ean", "jan", "isbn", "mpn", "location", "quantity", "model", "manufacturer", "image_name", "requires\nshipping", "price", "points", "date_added", "date_modified", "date_available", "weight", "unit", "length", "width", "height", "length\nunit", "status\nenabled", "tax_class_id", "viewed", "language_id", "seo_keyword", "description", "meta_description", "meta_keywords", "stock_status_id", "store_ids", "layout", "related_ids", "tags", "sort_order", "subtract", "minimum" );
+		return array( "product_id", "name", "categories", "sku", "upc", "ean", "jan", "isbn", "mpn", "location", "quantity", "model", "manufacturer", "image_name", "requires\nshipping", "price", "points", "date_added", "date_modified", "date_available", "weight", "unit", "length", "width", "height", "length\nunit", "status\nenabled", "tax_class_id", "viewed", "language_id", "seo_keyword", "description", "meta_description", "meta_keywords", "stock_status_id", "layout", "related_ids", "tags", "sort_order", "subtract", "minimum", "filter_id" );
 	}
 
 	protected function expectedRewardsHeading() {
@@ -1999,6 +2031,7 @@ class ModelToolExportStore extends Model {
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('meta_description'),32)+1);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('meta_keywords'),32)+1);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('layout'),16)+1);
+                $worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('filter_id'),16)+1);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('status'),5)+1,$textFormat);
 
 		// The heading row
@@ -2019,6 +2052,7 @@ class ModelToolExportStore extends Model {
 		$this->setCell( $worksheet, $i, $j++, 'meta_description', $boxFormat );
 		$this->setCell( $worksheet, $i, $j++, 'meta_keywords', $boxFormat );
 		$this->setCell( $worksheet, $i, $j++, 'layout', $boxFormat );
+                $this->setCell( $worksheet, $i, $j++, 'filter_id', $boxFormat );
 		$this->setCell( $worksheet, $i, $j++, "status\nenabled", $boxFormat );
 		$worksheet->getRowDimension($i)->setRowHeight(30);
 
@@ -2026,6 +2060,7 @@ class ModelToolExportStore extends Model {
 		$i += 1;
 		$j = 0;
 		$layouts = $this->getLayoutsForCategories();
+		$filters = $this->getFiltersForCategories( $storeId, $languageId );
 		$categories = $this->getCategories( $storeId, $languageId );
 		foreach ($categories as $row) {
 			$worksheet->getRowDimension($i)->setRowHeight(26);
@@ -2054,6 +2089,8 @@ class ModelToolExportStore extends Model {
 			}
 */
 			$this->setCell( $worksheet, $i, $j++, $layoutList, $textFormat );
+  			$this->setCell( $worksheet, $i, $j++, isset($filters[$categoryId]) ? 
+				join(',', $filters[$categoryId]) : '', $textFormat);
 			$this->setCell( $worksheet, $i, $j++, ($row['status']==0) ? "false" : "true", $textFormat );
 			$i += 1;
 			$j = 0;
@@ -2218,6 +2255,7 @@ class ModelToolExportStore extends Model {
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('sort_order'),8)+1);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('subtract'),5)+1,$textFormat);
 		$worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('minimum'),8)+1);
+                $worksheet->getColumnDimensionByColumn($j++)->setWidth(max(strlen('filter_id'),8)+1);
 
 		// The product headings row
 		$i = 1;
@@ -2263,12 +2301,14 @@ class ModelToolExportStore extends Model {
 		$this->setCell( $worksheet, $i, $j++, 'sort_order', $boxFormat );
 		$this->setCell( $worksheet, $i, $j++, "subtract", $boxFormat );
 		$this->setCell( $worksheet, $i, $j++, 'minimum', $boxFormat );
+                $this->setCell( $worksheet, $i, $j++, 'filter_id', $boxFormat );
 		$worksheet->getRowDimension($i)->setRowHeight(30);
 
 		// The actual products data
 		$i += 1;
 		$j = 0;
 		$layouts = $this->getLayoutsForProducts();
+		$filters = $this->getFiltersForProducts( $storeId );
 		$products = $this->getProducts( $storeId, $languageId );
 		foreach ($products as $row) {
 			$worksheet->getRowDimension($i)->setRowHeight(26);
@@ -2322,6 +2362,8 @@ class ModelToolExportStore extends Model {
 			$this->setCell( $worksheet, $i, $j++, $row['sort_order'] );
 			$this->setCell( $worksheet, $i, $j++, ($row['subtract']==0) ? "false" : "true", $textFormat );
 			$this->setCell( $worksheet, $i, $j++, $row['minimum'] );
+                        $this->setCell( $worksheet, $i, $j++, isset($filters[$productId]) ? 
+				join(',', $filters[$productId]) : '');
 			$i += 1;
 			$j = 0;
 		}
@@ -2578,6 +2620,7 @@ class ModelToolExportStore extends Model {
 		$registry = $this->registry;
 		set_error_handler('error_handler_for_export',E_ALL);
 		register_shutdown_function('fatal_error_shutdown_handler_for_export');
+                $storeId = $registry->get('request')->get['store_id'];
 
 		try {
 			$this->session->data['export_nochange'] = 1;
@@ -2587,15 +2630,16 @@ class ModelToolExportStore extends Model {
 			$this->session->data['export_nochange'] = 0;
 
 			$data = $this->loadSheet($filename, 'Categories');
-			if (!$this->uploadCategories( $data )) {
+			if (!$this->uploadCategories( $storeId, $data )) {
 				return false;
 			}
 
 			$data = $this->loadSheet($filename, 'Products');
-			if (!$this->uploadProducts( $data )) {
+			if (!$this->uploadProducts( $storeId, $data )) {
 				return false;
 			}
 
+return true;
 			$data = $this->loadSheet($filename, 'AdditionalImages');
 			if (!$this->uploadAdditionalImages( $data )) {
 				return false;
