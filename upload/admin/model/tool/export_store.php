@@ -763,8 +763,10 @@ class ModelToolExportStore extends Model {
 			}
 
 			foreach ($category['filter_id'] as $filterId) {
-				$sql8 = "INSERT INTO `".DB_PREFIX."category_filter` (`category_id`, `filter_id`) VALUES ($categoryId, $filterId);";
-                                $this->db->query($sql8);
+				if ($filterId != "") {
+					$sql8 = "INSERT INTO `".DB_PREFIX."category_filter` (`category_id`, `filter_id`) VALUES ($categoryId, $filterId);";
+                                	$this->db->query($sql8);
+				}
 			}
 		}
 
@@ -844,7 +846,7 @@ class ModelToolExportStore extends Model {
 		return true;
 	}
 
-	public function storeManufacturersIntoDatabase(&$products, &$manufacturerIds) {
+	public function storeManufacturersIntoDatabase($storeId, &$products, &$manufacturerIds) {
 		// find all manufacturers already stored in the database
 		$sql = "SELECT `manufacturer_id`, `name` FROM `".DB_PREFIX."manufacturer`;";
 		$result = $this->db->query( $sql );
@@ -866,6 +868,7 @@ class ModelToolExportStore extends Model {
 			$maxManufacturerId = max( $maxManufacturerId, $manufacturerId );
 		}
 		$sql = "INSERT INTO `".DB_PREFIX."manufacturer` (`manufacturer_id`, `name`, `image`, `sort_order`) VALUES ";
+		$sql2 = "INSERT INTO `".DB_PREFIX."manufacturer_to_store` (`manufacturer_id`,`store_id`) VALUES ";
 		$k = strlen( $sql );
 		$first = true;
 		foreach ($products as $product) {
@@ -878,35 +881,19 @@ class ModelToolExportStore extends Model {
 				$manufacturerId = $maxManufacturerId;
 				$manufacturerIds[$manufacturerName] = $manufacturerId;
 				$sql .= ($first) ? "\n" : ",\n";
+				$sql2 .= ($first) ? "\n" : ",\n";
 				$first = false;
 				$sql .= "($manufacturerId, '".$this->db->escape($manufacturerName)."', '', 0)";
+				$sql2 .= "($manufacturerId, $storeId)";
 			}
 		}
 		$sql .= ";\n";
+		$sql2 .= ";\n";
 		if (strlen( $sql ) > $k+2) {
 			$this->db->query( $sql );
+                        $this->db->query( $sql2 );
 		}
 
-		// populate manufacturer_to_store table
-		$storeIdsForManufacturers = array();
-		foreach ($products as $product) {
-			$manufacturerName = $product['manufacturer'];
-			if ($manufacturerName=="") {
-				continue;
-			}
-			$manufacturerId = $manufacturerIds[$manufacturerName];
-			$storeIds = $product['store_ids'];
-			if (!isset($storeIdsForManufacturers[$manufacturerId])) {
-				$storeIdsForManufacturers[$manufacturerId] = array();
-			}
-			foreach ($storeIds as $storeId) {
-				if (!in_array($storeId,$storeIdsForManufacturers[$manufacturerId])) {
-					$storeIdsForManufacturers[$manufacturerId][] = $storeId;
-					$sql2 = "INSERT INTO `".DB_PREFIX."manufacturer_to_store` (`manufacturer_id`,`store_id`) VALUES ($manufacturerId,$storeId);";
-					$this->db->query( $sql2 );
-				}
-			}
-		}
 		return true;
 	}
 
@@ -1081,10 +1068,11 @@ class ModelToolExportStore extends Model {
 		$sql .= "DELETE FROM `".DB_PREFIX."product_description` WHERE language_id=$languageId;\n";
 		$sql .= "DELETE FROM `".DB_PREFIX."product_to_category` WHERE product_id IN (SELECT * FROM product_t);\n";
 		$sql .= "DELETE FROM `".DB_PREFIX."product_to_store` WHERE product_id IN (SELECT * FROM product_t);\n";
-		$sql .= "DELETE FROM `".DB_PREFIX."manufacturer_to_store` WHERE store_id=$storeId;\n";
+//		$sql .= "DELETE FROM `".DB_PREFIX."manufacturer_to_store` WHERE store_id=$storeId;\n";
 //		$sql .= "DELETE FROM `".DB_PREFIX."url_alias` WHERE `query` LIKE 'product_id=%';\n";
 		$sql .= "DELETE FROM `".DB_PREFIX."product_related` WHERE product_id IN (SELECT * FROM product_t);\n";
 		$sql .= "DELETE FROM `".DB_PREFIX."product_to_layout` WHERE product_id IN (SELECT * FROM product_t);\n";
+                $sql .= "DELETE FROM `".DB_PREFIX."product_filter` WHERE product_id IN (SELECT * FROM product_t);\n";
 		$this->multiquery( $sql );
 
 		// get pre-defined layouts
@@ -1095,7 +1083,7 @@ class ModelToolExportStore extends Model {
 
 		// store or update manufacturers
 		$manufacturerIds = array();
-		$ok = true;//$this->storeManufacturersIntoDatabase( $products, $manufacturerIds );
+		$ok = $this->storeManufacturersIntoDatabase( $storeId, $products, $manufacturerIds );
 		if (!$ok) {
 			$this->db->query( 'ROLLBACK;' );
 			return false;
@@ -1115,7 +1103,7 @@ class ModelToolExportStore extends Model {
 			$quantity = $product['quantity'];
 			$model = $this->db->escape($product['model']);
 			$manufacturerName = $product['manufacturer'];
-			$manufacturerId = 0;//($manufacturerName=="") ? 0 : $manufacturerIds[$manufacturerName];
+			$manufacturerId = ($manufacturerName=="") ? 0 : $manufacturerIds[$manufacturerName];
 			$imageName = $product['image'];
 			$shipping = $product['shipping'];
 			$shipping = ((strtoupper($shipping)=="YES") || (strtoupper($shipping)=="Y") || (strtoupper($shipping)=="TRUE")) ? 1 : 0;
@@ -1222,6 +1210,12 @@ class ModelToolExportStore extends Model {
 				}
 				$sql .= ";";
 				$this->db->query($sql);
+			}
+			foreach ($product['filters'] as $filterId) {
+				if ($filterId != "") {
+                                	$sql = "INSERT INTO `".DB_PREFIX."product_filter` (`product_id`, `filter_id`) VALUES ($productId, $filterId);";
+                                	$this->db->query($sql);
+				}
 			}
 		}
 
