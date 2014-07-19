@@ -1065,7 +1065,7 @@ class ModelToolExportStore extends Model {
 		$sql = "START TRANSACTION;\n";
                 $sql .= "CREATE TEMPORARY TABLE product_t AS SELECT DISTINCT product_id FROM `".DB_PREFIX."product_to_store` WHERE store_id=$storeId;\n";
 		$sql .= "DELETE FROM `".DB_PREFIX."product` WHERE product_id IN (SELECT * FROM product_t);\n";
-		$sql .= "DELETE FROM `".DB_PREFIX."product_description` WHERE language_id=$languageId;\n";
+		$sql .= "DELETE FROM `".DB_PREFIX."product_description` WHERE language_id=$languageId AND product_id IN (SELECT * FROM product_t);\n";
 		$sql .= "DELETE FROM `".DB_PREFIX."product_to_category` WHERE product_id IN (SELECT * FROM product_t);\n";
 		$sql .= "DELETE FROM `".DB_PREFIX."product_to_store` WHERE product_id IN (SELECT * FROM product_t);\n";
 //		$sql .= "DELETE FROM `".DB_PREFIX."manufacturer_to_store` WHERE store_id=$storeId;\n";
